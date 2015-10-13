@@ -17,8 +17,12 @@ class EstimatorSuite extends FunSuite{
       .setAppName("CountingSheep")
     val sc = new SparkContext(conf)
     val sqlContext = SQLContext.getOrCreate(sc)
-    import sqlContext._
-    val training = sqlContext.read.json("src/main/resources/test.json")
+    val training = sqlContext.createDataFrame(Seq(
+      (1.0, Vectors.dense(0.0, 1.1, 0.1)),
+      (0.0, Vectors.dense(2.0, 1.0, -1.0)),
+      (0.0, Vectors.dense(2.0, 1.3, 1.0)),
+      (1.0, Vectors.dense(0.0, 1.2, -0.5))
+    )).toDF("label", "features")
 
     //training.columns
   }

@@ -4,7 +4,7 @@
   <artifactId>ml_project</artifactId>
   <version>1.0-SNAPSHOT</version>
   <properties>
-    <scala.version>2.11.7</scala.version>
+    <scala.version>2.10.4</scala.version>
   </properties>
 
   <dependencies>
@@ -15,50 +15,24 @@
     </dependency>
     <dependency> <!-- Scalatest dependency -->
       <groupId>org.scalatest</groupId>
-      <artifactId>scalatest_2.11</artifactId>
+      <artifactId>scalatest_2.10</artifactId>
       <version>2.2.4</version>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.specs</groupId>
-      <artifactId>specs</artifactId>
-      <version>1.2.5</version>
       <scope>test</scope>
     </dependency>
     <dependency> <!-- Spark dependency -->
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-core_2.11</artifactId>
-      <version>1.5.0</version>
+      <artifactId>spark-core_2.10</artifactId>
+      <version>1.5.1</version>
     </dependency>
     <dependency> <!-- Spark MLLib dependency -->
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-mllib_2.11</artifactId>
-      <version>1.5.0</version>
+      <artifactId>spark-mllib_2.10</artifactId>
+      <version>1.5.1</version>
     </dependency>
     <dependency> <!-- Spark SQL dependency -->
       <groupId>org.apache.spark</groupId>
-      <artifactId>spark-sql_2.11</artifactId>
-      <version>1.5.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-common</artifactId>
-      <version>2.2.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-mapreduce-client-core</artifactId>
-      <version>2.2.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.hadoop</groupId>
-      <artifactId>hadoop-hdfs</artifactId>
-      <version>2.2.0</version>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.commons</groupId>
-      <artifactId>commons-lang3</artifactId>
-      <version>3.4</version>
+      <artifactId>spark-sql_2.10</artifactId>
+      <version>1.5.1</version>
     </dependency>
   </dependencies>
 
