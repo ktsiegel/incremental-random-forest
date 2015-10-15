@@ -18,7 +18,6 @@ class CrossValidator ( // TODO: should this extend estimator similar to spark.ml
   def cv() { // TODO: need to figure out what the output will be
     // split the data based on number of folds
     // TODO: how to represent splits of the data
-    var Array[DataFrame]
 
     // train models on each fold
 

@@ -5,7 +5,10 @@ import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.sql.SQLContext
 import org.scalatest.FunSuite
 
-class EstimatorSuite extends FunSuite{
+/**
+ * Example test case
+ */
+class TestSuite extends FunSuite{
 
   /**
    * Very basic test that checks that we can correctly use dataframes and paramMaps from spark.ml
