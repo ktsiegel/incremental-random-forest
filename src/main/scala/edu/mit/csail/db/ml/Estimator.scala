@@ -1,7 +1,5 @@
 package edu.mit.csail.db.ml
 
-import org.apache.spark.ml.param.{ParamMap}
-import org.apache.spark.ml.Model
 import org.apache.spark.sql.DataFrame
 /**
  * Abstract class for estimators that fit one more more models onto data and update models
@@ -11,7 +9,7 @@ import org.apache.spark.sql.DataFrame
  */
 
 // TODO: should this be a trait or an abstract class?
-abstract class Estimator[M <: Model[M]] {
+abstract class Estimator[M <: Model] {
   def fit(data: DataFrame, modelSpecs: Array[ModelSpec]): Array[M]
   // TODO: where are we storing training information like the optimization technique?
 

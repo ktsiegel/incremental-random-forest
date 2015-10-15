@@ -1,6 +1,5 @@
 package edu.mit.csail.db.ml
 
-import edu.mit.csail.db.ml.Evaluator
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.sql.DataFrame
 
