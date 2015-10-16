@@ -1,5 +1,7 @@
 package edu.mit.csail.db.ml
 
+import java.io.OutputStream
+
 import org.apache.spark.sql.DataFrame
 
 /**
@@ -9,7 +11,9 @@ import org.apache.spark.sql.DataFrame
  */
 abstract class Model {
   /**
-   * Predict target variables using this model
+   * Predict target variables using this model.
+   * By default, the output data frame should contain an output column called "prediction".
+   * This should be overridden in subclasses and configurable by the user.
    * @param data
    * @return
    */
@@ -18,7 +22,7 @@ abstract class Model {
   /**
    * Export model to a different format
    * @param format
-   * @param filename
+   * @param out
    */
-  def export(format: String, filename:String)
+  def export(format: String, out:OutputStream)
 }

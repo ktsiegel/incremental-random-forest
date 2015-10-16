@@ -1,8 +1,7 @@
 package edu.mit.csail.db.ml
 
-import org.apache.spark.mllib.linalg.Vector
+import org.apache.spark.sql.DataFrame
 
 abstract class Evaluator {
-  // TODO: should this be a vector or a data frame?
-  def eval(predicted: Vector, actual: Vector) // TODO: need to figure out what the output will be
+  def eval(predicted: DataFrame, actual: DataFrame) // TODO: need to figure out what the output will be
 }

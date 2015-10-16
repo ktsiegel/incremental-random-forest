@@ -13,5 +13,5 @@ abstract class Estimator[M <: Model] {
   def fit(data: DataFrame, modelSpecs: Array[ModelSpec]): Array[M]
   // TODO: where are we storing training information like the optimization technique?
 
-  def addData(newData: DataFrame, models: Array[M])
+  def addData(newData: DataFrame, models: Array[M]): Array[M]
 }
