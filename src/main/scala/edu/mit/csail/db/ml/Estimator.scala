@@ -10,8 +10,37 @@ import org.apache.spark.sql.DataFrame
 
 // TODO: should this be a trait or an abstract class?
 abstract class Estimator[M <: Model] {
-  def fit(data: DataFrame, modelSpecs: Array[ModelSpec]): Array[M]
   // TODO: where are we storing training information like the optimization technique?
 
-  def addData(newData: DataFrame, models: Array[M]): Array[M]
+  /**
+   * Fits a model spec to a given data frame.
+   * @param data: The data frame containing the features that will be used to create the model.
+   * @param modelSpec: The specification for the model that should be created.
+   * @return The fitted model.
+   */
+  def fit(data: DataFrame, modelSpec: ModelSpec): M
+
+  /**
+   * Retrains a model given new data.
+   * @param newData: The data frame to use in the training of the new model.
+   * @param model: The model that will be retrained. It is not mutated.
+   * @return The retrained model.
+   */
+  def addData(newData: DataFrame, model: M): M
+
+  /**
+   * Fits a series of model specs to a given data frame and returns an array of models.
+   * @param data: The data frame containing the features that will be used to create the models.
+   * @param modelSpecs: The specifications for each model that should be created.
+   * @return The fitted models.
+   */
+  def fit(data: DataFrame, modelSpecs: Array[ModelSpec]): Array[M] = modelSpecs.map{fit(data, _)}
+
+  /**
+   * Retrains the original array of models given new data.
+   * @param newData: The data frame to used in the training of the new models.
+   * @param models: The models that will be retrained. They are not mutated.
+   * @return The retrained models.
+   */
+  def addData(newData: DataFrame, models: Array[M]): Array[M] = models.map{addData(newData, _)}
 }
