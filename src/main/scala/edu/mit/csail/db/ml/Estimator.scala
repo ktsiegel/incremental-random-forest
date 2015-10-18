@@ -34,7 +34,8 @@ abstract class Estimator[M <: Model] {
    * @param modelSpecs: The specifications for each model that should be created.
    * @return The fitted models.
    */
-  def fit(data: DataFrame, modelSpecs: Array[ModelSpec]): Array[M] = modelSpecs.map{fit(data, _)}
+  def fit(data: DataFrame, modelSpecs: ModelSpec*): Seq[M] =
+    for (spec <- modelSpecs) yield fit(data, spec)
 
   /**
    * Retrains the original array of models given new data.
@@ -42,5 +43,6 @@ abstract class Estimator[M <: Model] {
    * @param models: The models that will be retrained. They are not mutated.
    * @return The retrained models.
    */
-  def addData(newData: DataFrame, models: Array[M]): Array[M] = models.map{addData(newData, _)}
+  def addData(newData: DataFrame, models: M*): Seq[M] =
+    for (model <- models) yield addData(newData, model)
 }

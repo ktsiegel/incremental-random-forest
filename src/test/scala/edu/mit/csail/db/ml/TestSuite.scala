@@ -28,8 +28,4 @@ class TestSuite extends FunSuite{
     )).toDF("label", "features")
     // maybe do something here?
   }
-
-  test() {
-
-  }
 }
