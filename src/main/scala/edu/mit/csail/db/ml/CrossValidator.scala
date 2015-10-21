@@ -10,15 +10,10 @@ import edu.mit.csail.db.ml.{Model, ModelSpec, Evaluator}
  * Created by mvartak on 10/14/15.
  */
 class CrossValidator (
-  myModelSpecs: Array[ModelSpec],
-  myEvaluator: Evaluator,
-  myParams: ParamMap,
-  myData: DataFrame) {
-
-  var modelSpecs: Array[ModelSpec] = myModelSpecs
-  var evaluator: Evaluator = myEvaluator
-  var params: ParamMap = myParams
-  var data: DataFrame = myData
+  modelSpecs: Array[ModelSpec],
+  evaluator: Evaluator,
+  params: ParamMap,
+  data: DataFrame) {
 
   var dataFolds: Array[DataFrame] = splitData(data, params.get("folds"))
   var estimator: Estimator = new LREstimator()
