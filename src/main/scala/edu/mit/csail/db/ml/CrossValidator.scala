@@ -13,21 +13,16 @@ class CrossValidator (
   modelSpecs: Array[ModelSpec],
   evaluator: Evaluator,
   params: ParamMap,
-  data: DataFrame) {
+  data: DataFrame,
+  estimator: Estimator) {
 
   var dataFolds: Array[DataFrame] = splitData(data, params.get("folds"))
-  var estimator: Estimator = new LREstimator()
   var db: ModelDB = new ModelDB()
   
   // TODO do we want to use existing classes?
   // private val cv = new SparkCrossValidator()
-  // def setEstimator(estimator: Estimator) =
   // cv.setEstimator(estimator.getSparkEstimator)
-  // override def getSparkEstimator = cv.getEstimator
-  // def setEvaluator(evaluator: Evaluator) = {
-  //   // TODO(hsubrama): Add this as an evaluator of the cross validator.
-  //   cv.setEvaluator(new BinaryClassificationEvaluator())
-  // }
+  // cv.setEvaluator(new BinaryClassificationEvaluator())
 
   private def splitData(df: DataFrame, param: Param): Array[DataFrame] =
     // create new dataframe array based on number of folds & instantiate dataframes
