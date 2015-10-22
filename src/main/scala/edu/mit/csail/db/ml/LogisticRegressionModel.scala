@@ -3,7 +3,7 @@ package edu.mit.csail.db.ml
 import java.io.OutputStream
 import org.apache.spark.sql.DataFrame
 
-class LRModel extends Model {
+class LogisticRegressionModel extends Model {
   /**
    * Predict target variables using this model.
    * By default, the output data frame should contain an output column called "prediction".

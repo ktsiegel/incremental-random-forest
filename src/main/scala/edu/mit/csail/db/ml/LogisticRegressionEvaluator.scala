@@ -2,7 +2,7 @@ package org.apache.spark.wahoo.evaluator
 
 import org.apache.spark.mllib.linalg.
 
-class LREvaluator {
+class LogisticRegressionEvaluator {
   /**
    * Compares the predicted output of a model with the actual output
    * @param predicted: the outcome predicted by a model

@@ -4,11 +4,6 @@ import java.io.OutputStream
 
 import org.apache.spark.sql.DataFrame
 
-class LogisticRegressionModel extends Model {
-  def predict(data: DataFrame): DataFrame = ???
-  def export(format: String, out:OutputStream) = ???
-}
-
 class LogisticRegression extends Estimator[LogisticRegressionModel] {
   /**
    * Fit a logistic regression model.
