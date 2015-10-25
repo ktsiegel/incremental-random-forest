@@ -5,20 +5,17 @@ package edu.mit.csail.db.ml
 
 import org.apache.spark.sql.DataFrame
 
-// NOTE - At the moment, the following imports are permanently hidden by definitions in package ml
-//import edu.mit.csail.db.ml.{Model, ModelSpec, Evaluator}
-
 /**
  * This class is responsible for performing cross validation given a set of parameters
  * and models
  * Created by mvartak on 10/14/15.
  */
 class CrossValidator (
-  modelSpecs: Array[edu.mit.csail.db.ml.ModelSpec],
-  evaluator: edu.mit.csail.db.ml.Evaluator,
+  modelSpecs: Array[ModelSpec],
+  evaluator: Evaluator,
   params: Array[Int],
   data: DataFrame,
-  estimator: Estimator[edu.mit.csail.db.ml.Model]) {
+  estimator: Estimator[Model]) {
 
     var dataFolds: Array[DataFrame] = splitData(data, params(0))
     var db: ModelDB = new ModelDB()
@@ -53,7 +50,7 @@ class CrossValidator (
         //var inputB = dataFoldB.get("feature")
         //var expectedB = dataFoldB.get("label")
         
-	//var model:edu.mit.csail.db.ml.Model = estimator.fit(modelSpec, inputA, expectedA, params)
+	//var model: Model = estimator.fit(modelSpec, inputA, expectedA, params)
         //var res = Array(evaluator.eval(model.predict(inputB), expectedB))
         
 	//results :+ res
