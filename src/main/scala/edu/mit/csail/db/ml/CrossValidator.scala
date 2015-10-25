@@ -1,8 +1,5 @@
 package edu.mit.csail.db.ml
 
-// TODO - I had a look at this class in Spark and it’s private to the ml package. We’ll have to hack in something else.
-//import org.apache.spark.ml.param.ParamMap
-
 import org.apache.spark.sql.DataFrame
 
 /**
@@ -13,11 +10,11 @@ import org.apache.spark.sql.DataFrame
 class CrossValidator (
   modelSpecs: Array[ModelSpec],
   evaluator: Evaluator,
-  params: Array[Int],
+  numSplits: Int,
   data: DataFrame,
   estimator: Estimator[Model]) {
 
-    var dataFolds: Array[DataFrame] = splitData(data, params(0))
+    var dataFolds: Array[DataFrame] = splitData(data, math.max(numSplits, 2))
     var db: ModelDB = new ModelDB()
   
     // TODO do we want to use existing classes?
