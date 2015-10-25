@@ -4,12 +4,12 @@ import org.apache.spark.sql.DataFrame
 
 abstract class Evaluator {
   /**
-   * Compares the predicted output of a model with the actual output.
+   * Compares predicted values with actual values.
    *
-   * Note that subclasses should contain logic for specifying which columns contain the labels.
-   * @param predicted: the outcome predicted by a model
-   * @param actual: the actual outcome
-   * @return a Result object encapsulating various accuracy metrics
+   * Subclasses should contain logic for specifying the input and output columns.
+   *
+   * @param dataset The dataset containing the actual and predicted labels.
+   * @return A numerical value indicating how well the values match up.
    */
-  def eval(predicted: DataFrame, actual: DataFrame): Result
+  def evaluate(dataset: DataFrame): Double
 }
