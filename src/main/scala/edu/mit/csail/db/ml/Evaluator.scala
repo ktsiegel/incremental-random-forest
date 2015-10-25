@@ -8,8 +8,8 @@ abstract class Evaluator {
    *
    * Subclasses should contain logic for specifying the input and output columns.
    *
-   * @param dataset The dataset containing the actual and predicted labels.
+   * @param data The data set containing the actual and predicted labels.
    * @return A numerical value indicating how well the values match up.
    */
-  def evaluate(dataset: DataFrame): Double
+  def evaluate(data: DataFrame): Double
 }
