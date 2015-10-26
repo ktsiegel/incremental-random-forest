@@ -1,4 +1,4 @@
-package edu.mit.csail.db.ml.test
+package edu.mit.csail.db.ml.sample
 
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.ml.param.ParamMap
@@ -8,7 +8,7 @@ import org.apache.spark.sql.{Row, SQLContext}
 import org.apache.spark.{SparkConf, SparkContext}
 
 
-object TestApp {
+object SampleApp {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf().setAppName("Simple Application")
     val sc = new SparkContext(conf)

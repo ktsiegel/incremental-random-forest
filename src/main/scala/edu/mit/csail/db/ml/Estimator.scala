@@ -8,9 +8,7 @@ import org.apache.spark.sql.DataFrame
  * Created by mvartak on 10/11/15.
  */
 
-// TODO: should this be a trait or an abstract class?
 abstract class Estimator[M <: Model] {
-  // TODO: where are we storing training information like the optimization technique?
 
   /**
    * Fits a model spec to a given data frame.

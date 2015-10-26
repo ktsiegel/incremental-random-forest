@@ -1,8 +1,10 @@
 # Ignore Mac OS X .DS_Store (it stores directory attributes).
 .DS_Store
 
-# Ignore Maven build results.
+# Ignore build results.
 target/*
+project/
+
 
 # Ignore IntelliJ config files.
 *.iml
