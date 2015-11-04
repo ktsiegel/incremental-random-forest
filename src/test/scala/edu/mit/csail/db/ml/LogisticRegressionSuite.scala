@@ -20,7 +20,7 @@ class TestDb extends ModelDb {
  * Check whether models are cached in the model database.
  */
 class LogisticRegressionSuite extends FunSuite {
-  test("spark.ml dataframe test") {
+  test("are models cached in the model database?") {
     val conf = new SparkConf()
       .setMaster("local[2]")
       .setAppName("simpletest")
