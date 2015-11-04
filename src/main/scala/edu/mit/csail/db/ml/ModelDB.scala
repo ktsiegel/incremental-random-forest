@@ -45,7 +45,7 @@ class ModelDb {
 }
 
 /**
- * Augments a class with a model database. Call the setDb method and ensure each class points to the
+ * Augments a class with a model database. Call the setDb method and ensure each object points to the
  * same model database.
  */
 trait HasModelDb {
