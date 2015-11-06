@@ -1,16 +1,21 @@
 package edu.mit.csail.db.ml
 
 import org.apache.spark.ml.{Estimator, Model}
+import org.apache.spark.ml.classification.LogisticRegressionModel
 import org.apache.spark.sql.DataFrame
 
+import com.mongodb.casbah.Imports._
 
 /**
  * The model database. Currently, it is simply a Map which maps ModelSpec to Model.
  */
 class ModelDb {
   /**
-   * The cached models.
+   * Set up database connection
    */
+  val mongoClient = MongoClient()
+  val modelCollection = mongoClient("wahooml")("models")
+
   private val cachedModels = collection.mutable.Map[Any, Any]()
 
   /**
@@ -20,7 +25,30 @@ class ModelDb {
    * @param model - The model to store with the given key.
    * @tparam M - The type of the model being stored. For example, LogisticRegressionModel.
    */
-  def cache[M <: Model[M]](spec: ModelSpec[M], model: M): Unit = cachedModels.put(spec, model)
+  def cache[M <: Model[M]](spec: ModelSpec[M], model: M, dataset: DataFrame): Unit = {
+    spec match {
+      case lrspec: LogisticRegressionSpec => {
+        val lrmodel: LogisticRegressionModel = model.asInstanceOf[LogisticRegressionModel]
+        val modelObj: MongoDBObject = DBObject(
+          "uid" -> lrmodel.uid,
+          "weights" -> lrmodel.weights.toArray,
+          "intercept" -> lrmodel.intercept,
+          "dataframe" -> "df1",
+          "modelspec" -> DBObject(
+            "type" -> "LogisticRegressionModel",
+            "features" -> lrspec.features,
+            "regParam" -> lrspec.regParam,
+            "maxIter" -> lrspec.maxIter
+          )
+        )
+        println("wahoo obj: " + modelObj)
+        modelCollection += modelObj
+        println("model collection: " + modelCollection.find())
+      }
+      // TODO add more types
+    }
+    cachedModels.put(spec, model)
+  }
 
   /**
    * Check whether this model specification has a model that has been cached.
@@ -76,7 +104,7 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
   abstract override def fit(dataset: DataFrame): M =
     super.getDb.getOrElse[M](modelSpec(dataset))(() => {
       val model = super.fit(dataset)
-      super.getDb.cache[M](modelSpec(dataset), model)
+      super.getDb.cache[M](modelSpec(dataset), model, dataset)
       model
     })
 }

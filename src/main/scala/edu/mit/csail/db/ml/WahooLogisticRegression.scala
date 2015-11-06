@@ -10,7 +10,7 @@ import org.apache.spark.sql.DataFrame
  * @param features - The features to use in training.
  * @param regParam - The regularization parameter.
  */
-class LogisticRegressionSpec(override val features: Array[String], val regParam: Double)
+class LogisticRegressionSpec(override val features: Array[String], val regParam: Double, val maxIter: Int)
   extends ModelSpec[LogisticRegressionModel](features) {
   override def equals(o: Any): Boolean = o match {
     case that: LogisticRegressionSpec => super.equals(o) && that.regParam == regParam
@@ -26,5 +26,5 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
 class WahooLogisticRegression extends LogisticRegression
 with HasModelDb with CanCache[LogisticRegressionModel] {
   override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
-    new LogisticRegressionSpec(dataset.columns, super.getRegParam)
+    new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
 }
