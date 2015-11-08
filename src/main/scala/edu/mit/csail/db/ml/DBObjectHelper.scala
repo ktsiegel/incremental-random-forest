@@ -2,6 +2,11 @@ package edu.mit.csail.db.ml
 
 import com.mongodb.casbah.Imports._
 
+/**
+ * Helper class for accessing fields of objects stored in MongoDB.
+ * @param underlying - The object we are accessing from Mongodb using
+ *                     the Casbah library.
+ */
 class DBObjectHelper(underlying: DBObject) {
 
   def asString(key: String) = underlying.as[String](key)
@@ -17,7 +22,5 @@ class DBObjectHelper(underlying: DBObject) {
 }
 
 object DBObjectHelper {
-
   implicit def toDBObjectHelper(obj: DBObject) = new DBObjectHelper(obj)
-
 }

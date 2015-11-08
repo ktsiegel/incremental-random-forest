@@ -51,6 +51,11 @@ class ModelDb {
     cachedModels.put(spec, model)
   }
 
+  /**
+   * Deterministic hashing function for a DataFrame.
+   * @param dataset - The DataFrame for which we are generating the hash.
+   * @return A unique, deterministic MD5 hash of the data in the DataFrame
+   */
   private def hashDataFrame(dataset: DataFrame) = {
     val info = dataset.toString() + dataset.count.toString()
     MessageDigest.getInstance("MD5").digest(info.getBytes).map("%02x".format(_)).mkString
