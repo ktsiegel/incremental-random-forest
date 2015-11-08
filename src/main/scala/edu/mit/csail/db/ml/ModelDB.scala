@@ -3,8 +3,11 @@ package edu.mit.csail.db.ml
 import org.apache.spark.ml.{Estimator, Model}
 import org.apache.spark.ml.classification.LogisticRegressionModel
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.ml.classification.LogisticRegressionModelGenerator
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
 
 import com.mongodb.casbah.Imports._
+import java.security.MessageDigest
 
 /**
  * The model database. Currently, it is simply a Map which maps ModelSpec to Model.
@@ -33,7 +36,7 @@ class ModelDb {
           "uid" -> lrmodel.uid,
           "weights" -> lrmodel.weights.toArray,
           "intercept" -> lrmodel.intercept,
-          "dataframe" -> "df1",
+          "dataframe" -> hashDataFrame(dataset),
           "modelspec" -> DBObject(
             "type" -> "LogisticRegressionModel",
             "features" -> lrspec.features,
@@ -41,13 +44,16 @@ class ModelDb {
             "maxIter" -> lrspec.maxIter
           )
         )
-        println("wahoo obj: " + modelObj)
         modelCollection += modelObj
-        println("model collection: " + modelCollection.find())
       }
       // TODO add more types
     }
     cachedModels.put(spec, model)
+  }
+
+  private def hashDataFrame(dataset: DataFrame) = {
+    val info = dataset.toString() + dataset.count.toString()
+    MessageDigest.getInstance("MD5").digest(info.getBytes).map("%02x".format(_)).mkString
   }
 
   /**
@@ -56,7 +62,35 @@ class ModelDb {
    * @tparam M - The type of the model. For example, LogisticRegressionModel.
    * @return Whether the cache contains a model with the given specification.
    */
-  def contains[M <: Model[M]](spec: ModelSpec[M]) = cachedModels.contains(spec)
+  def get[M <: Model[M]](spec: ModelSpec[M], dataset: DataFrame): LogisticRegressionModel = {
+    spec match {
+      case lrspec: LogisticRegressionSpec => {
+        val modelQuery = MongoDBObject(
+          "dataframe" -> hashDataFrame(dataset),
+          "modelspec" -> DBObject(
+            "type" -> "LogisticRegressionModel",
+            "features" -> lrspec.features,
+            "regParam" -> lrspec.regParam,
+            "maxIter" -> lrspec.maxIter
+          )
+        )
+        modelCollection.findOne(modelQuery) match {
+          case Some(modelInfo) => {
+            val modelHelper = new DBObjectHelper(modelInfo)
+            val generator = new LogisticRegressionModelGenerator()
+            val model = generator.create(modelHelper.asString("uid"),
+              Vectors.dense(modelHelper.asList[Double]("weights").toArray),
+              modelHelper.asDouble("intercept")
+            )
+            return model
+          }
+          case None => return null
+        }
+      }
+      // TODO add more types
+    }
+    null
+  }
 
   /**
    * Fetch the model with the given specification, or execute a function to generate a model if the
@@ -67,9 +101,18 @@ class ModelDb {
    * @tparam M - The type of the model. For example, LogisticRegressionModel.
    * @return The model fetched from the database, or the result of orElse.
    */
-  def getOrElse[M <: Model[M]](spec: ModelSpec[M])(orElse: ()=> M): M =
-    if (contains[M](spec) && cachedModels(spec).isInstanceOf[Model[M]])
-      cachedModels(spec).asInstanceOf[M] else orElse()
+  def getOrElse[M <: Model[M]](spec: ModelSpec[M], dataset: DataFrame)(orElse: ()=> M): M = {
+    val model = get[M](spec, dataset)
+    if (model != None && model.isInstanceOf[Model[M]])
+      model.asInstanceOf[M] else orElse()
+  }
+
+  /**
+   * ONLY FOR TESTING PURPOSES
+   * TODO: create a more selective clear function
+   * Drops the entire database so we start anew when testing.
+   */
+  def clear() = modelCollection.remove(MongoDBObject.empty)
 }
 
 /**
@@ -102,7 +145,7 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
    * @return The trained model.
    */
   abstract override def fit(dataset: DataFrame): M =
-    super.getDb.getOrElse[M](modelSpec(dataset))(() => {
+    super.getDb.getOrElse[M](modelSpec(dataset), dataset)(() => {
       val model = super.fit(dataset)
       super.getDb.cache[M](modelSpec(dataset), model, dataset)
       model

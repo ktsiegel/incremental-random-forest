@@ -4,15 +4,15 @@ import org.apache.spark.ml.Model
 import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.sql.SQLContext
+import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.scalatest.FunSuite
 
 
 class TestDb extends ModelDb {
   var fromCache: Boolean = false
-  override def getOrElse[M <: Model[M]](spec: ModelSpec[M])(orElse: ()=> M): M = {
-    if (contains(spec)) fromCache = true
-    super.getOrElse(spec)(orElse)
+  override def getOrElse[M <: Model[M]](spec: ModelSpec[M], dataset: DataFrame)(orElse: ()=> M): M = {
+    if (get(spec, dataset) != null) fromCache = true
+    super.getOrElse(spec, dataset)(orElse)
   }
 }
 
@@ -32,9 +32,12 @@ class LogisticRegressionSuite extends FunSuite {
       (0.0, Vectors.dense(2.0, 1.3, 1.0)),
       (1.0, Vectors.dense(0.0, 1.2, -0.5))
     )).toDF("label", "features")
+    
 
     // Train a Wahoo logistic regression model.
     val db = new TestDb()
+    db.clear() // ONLY FOR TESTING PURPOSES
+
     val lr = new WahooLogisticRegression()
     lr.setMaxIter(10).setRegParam(1.0).setDb(db)
     lr.fit(training)
