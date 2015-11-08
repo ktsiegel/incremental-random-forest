@@ -19,8 +19,6 @@ class ModelDb {
   val mongoClient = MongoClient()
   val modelCollection = mongoClient("wahooml")("models")
 
-  private val cachedModels = collection.mutable.Map[Any, Any]()
-
   /**
    * Store this model in the database.
    * @param spec - The specification. Since this is a key, make sure it implements equals() and
@@ -48,7 +46,6 @@ class ModelDb {
       }
       // TODO add more types
     }
-    cachedModels.put(spec, model)
   }
 
   /**
