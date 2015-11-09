@@ -34,6 +34,7 @@ class ModelDb {
           "uid" -> lrmodel.uid,
           "weights" -> lrmodel.weights.toArray,
           "intercept" -> lrmodel.intercept,
+          // TODO dataframe may not be stored in same table, to allow for folds.
           "dataframe" -> hashDataFrame(dataset),
           "modelspec" -> DBObject(
             "type" -> "LogisticRegressionModel",
