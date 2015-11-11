@@ -2,6 +2,9 @@ package edu.mit.csail.db.ml
 
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.sql.DataFrame
+import org.apache.spark.ml.classification.LogisticRegressionModelGenerator
+import com.mongodb.casbah.Imports._
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
 
 //TODO: Add more fields to this specification.
 /**
@@ -12,11 +15,42 @@ import org.apache.spark.sql.DataFrame
  */
 class LogisticRegressionSpec(override val features: Array[String], val regParam: Double, val maxIter: Int)
   extends ModelSpec[LogisticRegressionModel](features) {
+
   override def equals(o: Any): Boolean = o match {
     case that: LogisticRegressionSpec => super.equals(o) && that.regParam == regParam
     case _ => false
   }
+
   override def hashCode(): Int = super.hashCode() + regParam.hashCode()
+
+  override def toDBObject(model: LogisticRegressionModel): MongoDBObject =
+    DBObject(
+      "uid" -> model.uid,
+      "weights" -> model.weights.toArray,
+      "intercept" -> model.intercept,
+      "modelspec" -> DBObject(
+        "type" -> "LogisticRegressionModel",
+        "features" -> features,
+        "regParam" -> regParam,
+        "maxIter" -> maxIter
+      )
+    )
+
+  override def toDBQuery(): MongoDBObject = 
+    DBObject("modelspec" -> DBObject(
+      "type" -> "LogisticRegressionModel",
+      "features" -> features,
+      "regParam" -> regParam,
+      "maxIter" -> maxIter
+    ))
+
+  override def generateModel(dbObject: DBObjectHelper): LogisticRegressionModel = {
+    val generator = new LogisticRegressionModelGenerator()
+    generator.create(dbObject.asString("uid"),
+      Vectors.dense(dbObject.asList[Double]("weights").toArray),
+      dbObject.asDouble("intercept")
+    )
+  }
 }
 
 /**
