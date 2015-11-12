@@ -1,7 +1,5 @@
-package edu.mit.csail.db.ml
+package org.apache.spark.ml
 
-import org.apache.spark.ml.Model
-import org.apache.spark.ml.classification.LogisticRegression
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.sql.{SQLContext, DataFrame}

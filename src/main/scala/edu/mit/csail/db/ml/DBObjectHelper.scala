@@ -1,5 +1,4 @@
-package edu.mit.csail.db.ml
-
+package org.apache.spark.ml
 import com.mongodb.casbah.Imports._
 
 /**

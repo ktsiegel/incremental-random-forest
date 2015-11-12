@@ -1,9 +1,6 @@
-package edu.mit.csail.db.ml
+package org.apache.spark.ml
 
-import org.apache.spark.ml.{Estimator, Model}
-import org.apache.spark.ml.classification.LogisticRegressionModel
 import org.apache.spark.sql.DataFrame
-
 import com.mongodb.casbah.Imports._
 import java.security.MessageDigest
 

@@ -1,6 +1,5 @@
-package edu.mit.csail.db.ml
+package org.apache.spark.ml
 
-import org.apache.spark.ml.Model
 import org.apache.spark.sql.DataFrame
 import com.mongodb.casbah.Imports._
 

@@ -1,8 +1,7 @@
-package edu.mit.csail.db.ml
+package org.apache.spark.ml
 
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.ml.classification.LogisticRegressionModelGenerator
 import com.mongodb.casbah.Imports._
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 
@@ -45,8 +44,7 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
     ))
 
   override def generateModel(dbObject: DBObjectHelper): LogisticRegressionModel = {
-    val generator = new LogisticRegressionModelGenerator()
-    generator.create(dbObject.asString("uid"),
+    new LogisticRegressionModel(dbObject.asString("uid"),
       Vectors.dense(dbObject.asList[Double]("weights").toArray),
       dbObject.asDouble("intercept")
     )
