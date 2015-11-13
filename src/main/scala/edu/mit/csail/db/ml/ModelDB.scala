@@ -1,11 +1,6 @@
-package edu.mit.csail.db.ml
+package org.apache.spark.ml
 
-import org.apache.spark.ml.{Estimator, Model}
-import org.apache.spark.ml.classification.LogisticRegressionModel
 import org.apache.spark.sql.DataFrame
-import org.apache.spark.ml.classification.LogisticRegressionModelGenerator
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
-
 import com.mongodb.casbah.Imports._
 import java.security.MessageDigest
 
@@ -27,26 +22,10 @@ class ModelDb {
    * @tparam M - The type of the model being stored. For example, LogisticRegressionModel.
    */
   def cache[M <: Model[M]](spec: ModelSpec[M], model: M, dataset: DataFrame): Unit = {
-    spec match {
-      case lrspec: LogisticRegressionSpec => {
-        val lrmodel: LogisticRegressionModel = model.asInstanceOf[LogisticRegressionModel]
-        val modelObj: MongoDBObject = DBObject(
-          "uid" -> lrmodel.uid,
-          "weights" -> lrmodel.weights.toArray,
-          "intercept" -> lrmodel.intercept,
-          // TODO dataframe may not be stored in same table, to allow for folds.
-          "dataframe" -> hashDataFrame(dataset),
-          "modelspec" -> DBObject(
-            "type" -> "LogisticRegressionModel",
-            "features" -> lrspec.features,
-            "regParam" -> lrspec.regParam,
-            "maxIter" -> lrspec.maxIter
-          )
-        )
-        modelCollection += modelObj
-      }
-      // TODO add more types
-    }
+    val modelObj: MongoDBObject = spec.toDBObject(model)
+    // TODO dataframe may not be stored in same table, to allow for folds.
+    modelObj += "dataframe" -> hashDataFrame(dataset)
+    modelCollection += modelObj
   }
 
   /**
@@ -65,34 +44,15 @@ class ModelDb {
    * @tparam M - The type of the model. For example, LogisticRegressionModel.
    * @return Whether the cache contains a model with the given specification.
    */
-  def get[M <: Model[M]](spec: ModelSpec[M], dataset: DataFrame): LogisticRegressionModel = {
-    spec match {
-      case lrspec: LogisticRegressionSpec => {
-        val modelQuery = MongoDBObject(
-          "dataframe" -> hashDataFrame(dataset),
-          "modelspec" -> DBObject(
-            "type" -> "LogisticRegressionModel",
-            "features" -> lrspec.features,
-            "regParam" -> lrspec.regParam,
-            "maxIter" -> lrspec.maxIter
-          )
-        )
-        modelCollection.findOne(modelQuery) match {
-          case Some(modelInfo) => {
-            val modelHelper = new DBObjectHelper(modelInfo)
-            val generator = new LogisticRegressionModelGenerator()
-            val model = generator.create(modelHelper.asString("uid"),
-              Vectors.dense(modelHelper.asList[Double]("weights").toArray),
-              modelHelper.asDouble("intercept")
-            )
-            return model
-          }
-          case None => return null
-        }
+  def get[M <: Model[M]](spec: ModelSpec[M], dataset: DataFrame): M = {
+    val modelQuery = spec.toDBQuery()
+    modelQuery += "dataframe" -> hashDataFrame(dataset)
+    modelCollection.findOne(modelQuery) match {
+      case Some(modelInfo) => {
+        return spec.generateModel(new DBObjectHelper(modelInfo))
       }
-      // TODO add more types
+      case None => return null.asInstanceOf[M]
     }
-    null
   }
 
   /**
