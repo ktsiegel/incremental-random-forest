@@ -1,4 +1,7 @@
-package edu.mit.csail.db.ml.web
+package org.apache.spark.ml
+
+import java.awt.Desktop;
+import java.net.URI;
 
 import org.apache.spark.SparkContext
 import org.eclipse.jetty.server.Server
@@ -18,8 +21,10 @@ class WebServer(port: Int, context: SparkContext)
   require(port >= 0)
 
   val server = new Server(port)
+
+  // -automatically start the server and display the web interface in a browser-
   server.start()
-  server.join()
+  Desktop.getDesktop().browse(new URI("http://localhost:" + port))
 
   // if no port is provided, pick a reasonable default value
   def this(context: SparkContext) = this(8080, context)
