@@ -16,6 +16,8 @@ import org.eclipse.jetty.server.handler.AbstractHandler
 
 import scala.collection.mutable.StringBuilder
 
+import scala.sys.process._
+
 
 /* 
 	This class is responsible for producing a web interface for WahooML. At the moment,
@@ -78,7 +80,7 @@ class WebServer(context: SparkContext)
         usingSparkUI = false
     }
 	
-	// 
+	// This method displays a web UI for an active Spark Context
 	def display(): Unit =
 	{
 		val landingPage: String =

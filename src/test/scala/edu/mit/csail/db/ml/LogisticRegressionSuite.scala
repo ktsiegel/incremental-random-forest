@@ -5,7 +5,6 @@ import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.scalatest.FunSuite
 
-
 class TestDb extends ModelDb {
   var fromCache: Boolean = false
   override def getOrElse[M <: Model[M]](spec: ModelSpec[M], dataset: DataFrame)(orElse: ()=> M): M = {
@@ -21,7 +20,12 @@ class LogisticRegressionSuite extends FunSuite
 {
   test("are models cached in the model database?") 
   {
-    val conf = new SparkConf().setMaster("local[2]").setAppName("simpletest")
+    val conf = new SparkConf()
+		.setMaster("local[2]")
+		.setAppName("simpletest")
+		.set("spark.eventLog.enabled", "true")
+		.set("spark.eventLog.dir", "log")
+	
     val sc = new SparkContext(conf)
     val sqlContext = SQLContext.getOrCreate(sc)
 
@@ -32,7 +36,7 @@ class LogisticRegressionSuite extends FunSuite
       (1.0, Vectors.dense(0.0, 1.2, -0.5))
     )).toDF("label", "features")
     
-    // Open web GUI
+    // Display web GUI
     val webServer = new WebServer(sc)
 	webServer.display
 
