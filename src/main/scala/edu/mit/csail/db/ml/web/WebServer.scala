@@ -1,12 +1,12 @@
 package org.apache.spark.ml
 
-import java.awt.Desktop;
-import java.io.IOException;
-import java.net.URI;
+import java.awt.Desktop
+import java.io.IOException
+import java.net.URI
 
-import javax.servlet.http.HttpServletRequest;
-import javax.servlet.http.HttpServletResponse;
-import javax.servlet.ServletException;
+import javax.servlet.http.HttpServletRequest
+import javax.servlet.http.HttpServletResponse
+import javax.servlet.ServletException
 
 import org.apache.spark.SparkContext
 
@@ -18,7 +18,8 @@ import scala.collection.mutable.StringBuilder
 
 
 /* 
-	This class is responsible for producing a web interface for WahooML
+	This class is responsible for producing a web interface for WahooML. At the moment,
+	the default constructer launches Spark's web UI.
 	
 	Requirements:
 
@@ -27,51 +28,70 @@ import scala.collection.mutable.StringBuilder
 
  */
 
-class WebServer(port: Int, context: SparkContext)
+class WebServer(context: SparkContext)
 {
-  require(port >= 0)
-
-  /* This class serves an HTML page with a simple greeting */
-  class GreetingHandler extends AbstractHandler
-  {
-    @throws(classOf[IOException])
-    @throws(classOf[ServletException])
-    override def handle(target: String, baseRequest: Request,
-                        request: HttpServletRequest,
-                        response: HttpServletResponse): Unit =
+    /* This class serves an HTML page with a simple greeting */
+    class GreetingHandler extends AbstractHandler
     {
-      response.setContentType("text/html;charset=utf-8")
-      response.setStatus(HttpServletResponse.SC_OK)
+      @throws(classOf[IOException])
+      @throws(classOf[ServletException])
+      override def handle(target: String, baseRequest: Request,
+                          request: HttpServletRequest,
+                          response: HttpServletResponse): Unit =
+      {
+        response.setContentType("text/html;charset=utf-8")
+        response.setStatus(HttpServletResponse.SC_OK)
 
-      baseRequest.setHandled(true)
+        baseRequest.setHandled(true)
 
-      // create HTML response
-      val sb = new StringBuilder()
-      sb.append("<!DOCTYPE html>\n")
-      sb.append("<html>\n")
-      sb.append("  <head>\n")
-      sb.append("    <title>WahooML</title>\n")
-      sb.append("  </head>\n")
-      sb.append("  <body>\n")
-      sb.append("    <h1>" + context.appName + "</h1>\n")
-      sb.append("    <p>id:" + context.applicationId + "<p>\n")
-      sb.append("  </body>\n")
-      sb.append("</html>")
+        // create HTML response
+        val sb = new StringBuilder()
+        sb.append("<!DOCTYPE html>\n")
+        sb.append("<html>\n")
+        sb.append("  <head>\n")
+        sb.append("    <title>WahooML</title>\n")
+        sb.append("  </head>\n")
+        sb.append("  <body>\n")
+        sb.append("    <h1>" + context.appName + "</h1>\n")
+        sb.append("    <p>id:" + context.applicationId + "<p>\n")
+        sb.append("  </body>\n")
+        sb.append("</html>")
 
-      // serve HTML page
-      val writer = response.getWriter()
-      writer.print(sb.toString)
+        // serve HTML page
+        val writer = response.getWriter()
+        writer.print(sb.toString)
+      }
     }
-  }
+	
+	// -variables-
+    var port: Int = -1
+    var usingSparkUI: Boolean = true
 
-  // -set up web server-
-  val server = new Server(port)
-  server.setHandler(new GreetingHandler())
+    // -constructor: use custom servlet
+    def this(aPort: Int, aContext: SparkContext) =
+    {
+	    this(aContext)		// call base constructor
+        require(aPort >= 0)	// check port is valid
 
-  // -automatically start the server and display the web interface in a browser-
-  server.start()
-  Desktop.getDesktop().browse(new URI("http://localhost:" + port))
+		// set relevant variables
+        port = aPort
+        usingSparkUI = false
+    }
+	
+	// 
+	def display(): Unit =
+	{
+		val landingPage: String =
+		if (usingSparkUI) { "http://localhost:4040" }
+		else
+		{
+			val server = new Server(port)
+	    	server.setHandler(new GreetingHandler())
+			server.start()
+			"http://localhost:" + port
+		}
 
-  // if no port is provided, pick a reasonable default value
-  def this(context: SparkContext) = this(8080, context)
+    	// open the web UI
+		Desktop.getDesktop().browse(new URI(landingPage))
+	}
 }
