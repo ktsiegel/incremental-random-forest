@@ -13,6 +13,17 @@ class UISuite extends FunSuite
 	// database
     val db = new TestDb()
 	
+	// create Spark configuration
+    val conf = new SparkConf()
+		.setMaster("local[2]")
+		.setAppName("spark ui test")
+		.set("spark.eventLog.enabled", "true")
+		.set("spark.eventLog.dir", "log")
+		
+	// create Spark & SQL contexts
+	val sc = new SparkContext(conf)
+	val sqlContext = SQLContext.getOrCreate(sc)
+	
 	// training data
     val trainingData = sqlContext.createDataFrame(Seq(
 		(1.0, Vectors.dense(0.0, 1.1, 0.1)),
@@ -21,24 +32,12 @@ class UISuite extends FunSuite
         (1.0, Vectors.dense(0.0, 1.2, -0.5))
     )).toDF("label", "features")
 	
-	
 	// --- tests ---
 	/* This test checks to see whether or not we can launch the Spark UI at all. */
 	test("launch spark ui")
-	{
-		// create Spark configuration
-	    val conf = new SparkConf()
-			.setMaster("local[2]")
-			.setAppName("spark ui test")
-			.set("spark.eventLog.enabled", "true")
-			.set("spark.eventLog.dir", "log")
-			
-		// create Spark & SQL contexts
-		val sc = new SparkContext(conf)
-		val sqlContext = SQLContext.getOrCreate(sc)
-		
+	{	
 		// display Spark UI
-	    val webServer = new WebServer(sc)
+	    val webServer = new SparkUI(sc)
 		webServer.display
 		
 	    // train a Wahoo logistic regression model
@@ -56,19 +55,8 @@ class UISuite extends FunSuite
 	/* This test checks to see whether or not we can launch the Wahoo UI at all. */
 	test("launch wahoo ui")
 	{
-		// create Spark configuration
-	    val conf = new SparkConf()
-			.setMaster("local[2]")
-			.setAppName("whaoo ui test")
-			.set("spark.eventLog.enabled", "true")
-			.set("spark.eventLog.dir", "log")
-			
-		// create Spark & SQL contexts
-		val sc = new SparkContext(conf)
-		val sqlContext = SQLContext.getOrCreate(sc)
-		
-	    // display Spark UI
-	    val webServer = new WebServer(8080, sc)
+		// display Spark UI
+	    val webServer = new WahooUI(8080, sc)
 		webServer.display
 		
 	    // train a Wahoo logistic regression model
@@ -80,5 +68,8 @@ class UISuite extends FunSuite
 		
 	    // training should train from scratch
 	    assert(!db.fromCache)
+		
+		// clean up
+		sc.stop()
 	}
 }
