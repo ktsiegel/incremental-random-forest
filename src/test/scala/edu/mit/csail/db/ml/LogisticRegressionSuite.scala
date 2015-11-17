@@ -18,9 +18,6 @@ class TestDb extends ModelDb
 /** Check whether models are cached in the model database. */
 class LogisticRegressionSuite extends FunSuite 
 {
-	// database
-	val db = new TestDb()
-	
 	// spark configuration
     val conf = new SparkConf()
 		.setMaster("local[2]")
@@ -33,7 +30,7 @@ class LogisticRegressionSuite extends FunSuite
     val sqlContext = SQLContext.getOrCreate(sc)
 
 	// training data
-    val training = sqlContext.createDataFrame(Seq(
+    val trainingData = sqlContext.createDataFrame(Seq(
       (1.0, Vectors.dense(0.0, 1.1, 0.1)),
       (0.0, Vectors.dense(2.0, 1.0, -1.0)),
       (0.0, Vectors.dense(2.0, 1.3, 1.0)),
@@ -44,17 +41,18 @@ class LogisticRegressionSuite extends FunSuite
 	test("are models cached in the model database?") 
   	{
     	// Train a Wahoo logistic regression model.
+		val db = new TestDb()
     	db.clear() // ONLY FOR TESTING PURPOSES
 
     	val lr = new WahooLogisticRegression()
     	lr.setMaxIter(10).setRegParam(1.0).setDb(db)
-    	lr.fit(training)
+    	lr.fit(trainingData)
 
     	// The first training should train from scratch.
     	assert(!db.fromCache)
 
     	// The second training should just read from the cache.
-    	lr.fit(training)
+    	lr.fit(trainingData)
     	assert(db.fromCache)
   	}
 	
@@ -66,7 +64,7 @@ class LogisticRegressionSuite extends FunSuite
 		webServer.display
 		
 	    // train a Wahoo logistic regression model
-	    val db = new TestDb()
+		val db = new TestDb()
 	    db.clear()				// ONLY FOR TESTING PURPOSES
 		
 	    val lr = new WahooLogisticRegression()
@@ -85,6 +83,7 @@ class LogisticRegressionSuite extends FunSuite
 		webServer.display
 		
 	    // train a Wahoo logistic regression model
+		val db = new TestDb()
 	    db.clear()				// ONLY FOR TESTING PURPOSES
 		
 	    val lr = new WahooLogisticRegression()
@@ -93,8 +92,5 @@ class LogisticRegressionSuite extends FunSuite
 		
 	    // training should train from scratch
 	    assert(!db.fromCache)
-		
-		// clean up
-		sc.stop()
 	}
 }
