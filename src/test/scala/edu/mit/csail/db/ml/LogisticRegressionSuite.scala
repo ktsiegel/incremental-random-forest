@@ -35,10 +35,6 @@ class LogisticRegressionSuite extends FunSuite
       (0.0, Vectors.dense(2.0, 1.3, 1.0)),
       (1.0, Vectors.dense(0.0, 1.2, -0.5))
     )).toDF("label", "features")
-    
-    // Display web GUI
-    val webServer = new WebServer(sc)
-	webServer.display
 
     // Train a Wahoo logistic regression model.
     val db = new TestDb()
