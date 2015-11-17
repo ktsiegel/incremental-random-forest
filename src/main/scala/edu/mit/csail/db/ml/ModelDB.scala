@@ -5,7 +5,9 @@ import com.mongodb.casbah.Imports._
 import java.security.MessageDigest
 
 /**
- * The model database. Currently, it is simply a Map which maps ModelSpec to Model.
+ * This is the model database.
+ * Currently, it stores all the models in a single MongoDB collection.
+ * It connects to the default localhost:27017.
  */
 class ModelDb(private val databaseName: String, private val modelCollectionName: String) {
   /**
