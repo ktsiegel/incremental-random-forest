@@ -31,49 +31,49 @@ import scala.sys.process._
 
 class WahooUI(port: Int, context: SparkContext)
 {
-    /* This class serves an HTML page with a simple greeting */
-    class GreetingHandler extends AbstractHandler
+  /* This class serves an HTML page with a simple greeting */
+  class GreetingHandler extends AbstractHandler
+  {
+    @throws(classOf[IOException])
+    @throws(classOf[ServletException])
+    override def handle(target: String, baseRequest: Request,
+                        request: HttpServletRequest,
+                        response: HttpServletResponse): Unit =
     {
-      @throws(classOf[IOException])
-      @throws(classOf[ServletException])
-      override def handle(target: String, baseRequest: Request,
-                          request: HttpServletRequest,
-                          response: HttpServletResponse): Unit =
-      {
-        response.setContentType("text/html;charset=utf-8")
-        response.setStatus(HttpServletResponse.SC_OK)
+      response.setContentType("text/html;charset=utf-8")
+      response.setStatus(HttpServletResponse.SC_OK)
 
-        baseRequest.setHandled(true)
+      baseRequest.setHandled(true)
 
-        // create HTML response
-        val sb = new StringBuilder()
-        sb.append("<!DOCTYPE html>\n")
-        sb.append("<html>\n")
-        sb.append("  <head>\n")
-        sb.append("    <title>WahooML</title>\n")
-		sb.append("    <link href=\"css/bootstrap.css\" rel=\"stylesheet\" media=\"screen\">")
-        sb.append("  </head>\n")
-        sb.append("  <body>\n")
-        sb.append("    <script>\"http://code.jquery.com/jquery.js\"</script>\n")
-        sb.append("    <h1>" + context.appName + "</h1>\n")
-        sb.append("    <p>id:" + context.applicationId + "</p>\n")
-        sb.append("  </body>\n")
-        sb.append("</html>")
+      // create HTML response
+      val sb = new StringBuilder()
+      sb.append("<!DOCTYPE html>\n")
+      sb.append("<html>\n")
+      sb.append("  <head>\n")
+      sb.append("    <title>WahooML</title>\n")
+      sb.append("    <link href=\"css/bootstrap.css\" rel=\"stylesheet\" media=\"screen\">")
+      sb.append("  </head>\n")
+      sb.append("  <body>\n")
+      sb.append("    <script>\"http://code.jquery.com/jquery.js\"</script>\n")
+      sb.append("    <h1>" + context.appName + "</h1>\n")
+      sb.append("    <p>id:" + context.applicationId + "</p>\n")
+      sb.append("  </body>\n")
+      sb.append("</html>")
 
-        // serve HTML page
-        val writer = response.getWriter()
-        writer.print(sb.toString)
-      }
+      // serve HTML page
+      val writer = response.getWriter()
+      writer.print(sb.toString)
     }
-	
-	// This method displays a web UI for an active Spark Context
-	def display(): Unit =
-	{
-		val server = new Server(port)
-	    server.setHandler(new GreetingHandler())
-		server.start()
+  }
+  
+  // This method displays a web UI for an active Spark Context
+  def display(): Unit =
+  {
+	val server = new Server(port)
+	server.setHandler(new GreetingHandler())
+	server.start()
 
-    	// open the web UI
-		Desktop.getDesktop().browse(new URI("http://localhost:" + port))
-	}
+    // open the web UI
+	Desktop.getDesktop().browse(new URI("http://localhost:" + port))
+  }
 }
