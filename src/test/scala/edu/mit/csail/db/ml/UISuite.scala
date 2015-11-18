@@ -3,13 +3,12 @@ package org.apache.spark.ml
 import java.awt.Desktop
 import java.net.URI
 
-import org.apache.spark.mllib.linalg.{Vector, Vectors}
-import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.scalatest.{FunSuite, BeforeAndAfter}
 
-/**
- * Check whether models are cached in the model database.
- */
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+import org.apache.spark.sql.{SQLContext, DataFrame}
+
+/** Check whether models are cached in the model database. */
 class UISuite extends FunSuite with BeforeAndAfter {
   before {
     TestBase.db.clear()
@@ -20,9 +19,9 @@ class UISuite extends FunSuite with BeforeAndAfter {
     // display Spark UI
     Desktop.getDesktop().browse(new URI("http://localhost:4040"))
 	
-	// display Wahoo UI
+    // display Wahoo UI
     val webServer = new WahooUI(8080, TestBase.sc)
-	webServer.display
+    webServer.display
 	
     // train a Wahoo logistic regression model
     val trainingData = TestBase.sqlContext.createDataFrame(Seq(
