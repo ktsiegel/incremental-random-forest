@@ -14,25 +14,9 @@ class UISuite extends FunSuite with BeforeAndAfter {
     TestBase.db.clear()
   }
 
-  // -ui test-
+  // display Wahoo UI
   test("launch spark ui") {	
-    // display Wahoo UI
     val webServer = new WahooUI(8080, TestBase.sc)
     webServer.start()
-	
-    // train a Wahoo logistic regression model
-    val trainingData = TestBase.sqlContext.createDataFrame(Seq(
-      (1.0, Vectors.dense(0.0, 1.2, 0.1)),
-      (0.0, Vectors.dense(2.0, 1.0, -1.1)),
-      (0.0, Vectors.dense(2.1, 1.3, 1.0)),
-      (1.0, Vectors.dense(0.1, 1.2, -0.5))
-    )).toDF("label", "features")	
-	
-    val lr = new WahooLogisticRegression()
-    lr.setMaxIter(10).setRegParam(1.0).setDb(TestBase.db)
-    lr.fit(trainingData)
-	
-    // training should train from scratch
-    assert(!TestBase.db.fromCache)
   }
 }
