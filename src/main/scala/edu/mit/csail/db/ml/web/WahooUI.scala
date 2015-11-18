@@ -3,43 +3,31 @@ package org.apache.spark.ml
 import java.awt.Desktop
 import java.io.IOException
 import java.net.URI
-
 import javax.servlet.http.HttpServletRequest
 import javax.servlet.http.HttpServletResponse
 import javax.servlet.ServletException
 
-import org.apache.spark.SparkContext
+import scala.collection.mutable.StringBuilder
+import scala.sys.process._
 
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.handler.AbstractHandler
 
-import scala.collection.mutable.StringBuilder
-
-import scala.sys.process._
+import org.apache.spark.SparkContext
 
 
-/* 
-	This class is responsible for producing a web interface for WahooML.
-	
-	Requirements:
-
-		- want to call into a library to run the WebServer
-		- user should be able to navigate to app in browser via ip address/port
-
- */
-
-class WahooUI(port: Int, context: SparkContext)
-{
-  /* This class serves an HTML page with a simple greeting */
-  class GreetingHandler extends AbstractHandler
-  {
+/** This class is responsible for producing a web interface for WahooML. */
+class WahooUI(port: Int, context: SparkContext) {
+  /** This class serves an HTML page with a simple greeting */
+  class GreetingHandler extends AbstractHandler {
     @throws(classOf[IOException])
     @throws(classOf[ServletException])
-    override def handle(target: String, baseRequest: Request,
-                        request: HttpServletRequest,
-                        response: HttpServletResponse): Unit =
-    {
+    override def handle(
+    	target: String, 
+    	baseRequest: Request, 
+    	request: HttpServletRequest,
+        response: HttpServletResponse): Unit = {
       response.setContentType("text/html;charset=utf-8")
       response.setStatus(HttpServletResponse.SC_OK)
 
@@ -67,13 +55,12 @@ class WahooUI(port: Int, context: SparkContext)
   }
   
   // This method displays a web UI for an active Spark Context
-  def display(): Unit =
-  {
-	val server = new Server(port)
-	server.setHandler(new GreetingHandler())
-	server.start()
+  def display(): Unit = {
+    val server = new Server(port)
+    server.setHandler(new GreetingHandler())
+    server.start()
 
     // open the web UI
-	Desktop.getDesktop().browse(new URI("http://localhost:" + port))
+    Desktop.getDesktop().browse(new URI("http://localhost:" + port))
   }
 }
