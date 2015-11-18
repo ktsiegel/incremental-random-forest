@@ -5,14 +5,16 @@ import com.mongodb.casbah.Imports._
 import java.security.MessageDigest
 
 /**
- * The model database. Currently, it is simply a Map which maps ModelSpec to Model.
+ * This is the model database.
+ * Currently, it stores all the models in a single MongoDB collection.
+ * It connects to the default localhost:27017.
  */
-class ModelDb {
+class ModelDb(private val databaseName: String, private val modelCollectionName: String) {
   /**
    * Set up database connection
    */
   val mongoClient = MongoClient()
-  val modelCollection = mongoClient("wahooml")("models")
+  val modelCollection = mongoClient(databaseName)(modelCollectionName)
 
   /**
    * Store this model in the database.
@@ -83,9 +85,9 @@ class ModelDb {
  * same model database.
  */
 trait HasModelDb {
-  private var modelDb = new ModelDb()
-  def setDb(db: ModelDb) = modelDb = db
-  def getDb: ModelDb = modelDb
+  private var modelDb: Option[ModelDb] = None
+  def setDb(db: ModelDb) = modelDb = Some(db)
+  def getDb: Option[ModelDb] = modelDb
 }
 
 /**
@@ -108,9 +110,14 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
    * @return The trained model.
    */
   abstract override def fit(dataset: DataFrame): M =
-    super.getDb.getOrElse[M](modelSpec(dataset), dataset)(() => {
-      val model = super.fit(dataset)
-      super.getDb.cache[M](modelSpec(dataset), model, dataset)
-      model
-    })
+    super.getDb match {
+      case Some(db) =>
+        db.getOrElse[M](modelSpec(dataset), dataset)(() => {
+          val model = super.fit(dataset)
+          db.cache[M](modelSpec(dataset), model, dataset)
+          model
+        })
+      case None =>
+        super.fit(dataset)
+    }
 }
