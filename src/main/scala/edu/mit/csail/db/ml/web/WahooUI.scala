@@ -55,12 +55,14 @@ class WahooUI(port: Int, context: SparkContext) {
   }
   
   // This method displays a web UI for an active Spark Context
-  def display(): Unit = {
+  def start(launchBrowser: Boolean = false): Unit = {
     val server = new Server(port)
     server.setHandler(new GreetingHandler())
     server.start()
 
     // open the web UI
-    Desktop.getDesktop().browse(new URI("http://localhost:" + port))
+	if (launchBrowser) {
+      Desktop.getDesktop().browse(new URI("http://localhost:" + port))
+    }
   }
 }

@@ -16,12 +16,9 @@ class UISuite extends FunSuite with BeforeAndAfter {
 
   // -ui test-
   test("launch spark ui") {	
-    // display Spark UI
-    Desktop.getDesktop().browse(new URI("http://localhost:4040"))
-	
     // display Wahoo UI
     val webServer = new WahooUI(8080, TestBase.sc)
-    webServer.display
+    webServer.start()
 	
     // train a Wahoo logistic regression model
     val trainingData = TestBase.sqlContext.createDataFrame(Seq(
