@@ -8,7 +8,7 @@ import org.scalatest.{FunSuite, BeforeAndAfter}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.apache.spark.sql.{SQLContext, DataFrame}
 
-/** Check whether models are cached in the model database. */
+/** Check whether UI displays at all. */
 class UISuite extends FunSuite with BeforeAndAfter {
   before {
     TestBase.db.clear()
