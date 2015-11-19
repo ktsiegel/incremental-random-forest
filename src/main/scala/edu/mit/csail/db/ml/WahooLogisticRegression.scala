@@ -3,6 +3,7 @@ package org.apache.spark.ml
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.sql.DataFrame
 import com.mongodb.casbah.Imports._
+import org.apache.spark.ml.util._
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 
 //TODO: Add more fields to this specification.
@@ -55,8 +56,9 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
  * A smarter logistic regression which caches old models in the model database and looks them up before
  * trying to retrain. Make sure to to call the setDb method to give it a model database.
  */
-class WahooLogisticRegression extends LogisticRegression
+class WahooLogisticRegression(uid: String) extends LogisticRegression(uid)
 with HasModelDb with CanCache[LogisticRegressionModel] {
+  def this() = this(Identifiable.randomUID("logreg"))
   override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
     new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
 }
