@@ -19,6 +19,7 @@ extends ModelDb(databaseName, modelCollectionName) {
    */
   override def getOrElse[M <: Model[M]](spec: ModelSpec[M], dataset: DataFrame)(orElse: ()=> M): M = {
     if (get(spec, dataset) != null) fromCache = true
+    else fromCache = false
     super.getOrElse(spec, dataset)(orElse)
   }
 }
