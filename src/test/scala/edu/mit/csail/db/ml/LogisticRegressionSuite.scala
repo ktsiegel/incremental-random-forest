@@ -83,7 +83,6 @@ class LogisticRegressionSuite extends FunSuite with BeforeAndAfter {
     val accuracy2 = evalModel(model2, testing)
 
     assert(accuracy2 == accuracy1)
-    println("accuracy: " + accuracy2)
   }
 
 
@@ -105,7 +104,6 @@ class LogisticRegressionSuite extends FunSuite with BeforeAndAfter {
       .foreach { case Row(features: Vector, label: Double, prediction: Double) =>
         count += 1.0
         if (label == prediction) pos += 1.0
-        println(s"($features, $label) -> prediction=$prediction")
       }
     pos/count
   }
