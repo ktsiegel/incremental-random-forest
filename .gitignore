@@ -13,3 +13,6 @@ project/
 # Ignore SBT build results
 project/*
 target/*
+
+# Ignore the testLog directory created by the unit tests.
+testLog/
