@@ -1,6 +1,6 @@
 package org.apache.spark.ml
 
-// import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
+import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.sql.DataFrame
 import com.mongodb.casbah.Imports._
 import org.apache.spark.ml.util._

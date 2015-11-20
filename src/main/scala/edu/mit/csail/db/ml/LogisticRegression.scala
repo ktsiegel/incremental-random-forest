@@ -32,7 +32,7 @@ import org.apache.spark.ml.util._
 import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
 import org.apache.spark.mllib.linalg._
 import org.apache.spark.mllib.linalg.BLAS._
-import org.apache.spark.mllib.stat.MultivariateOnlineSummarizer
+import org.apache.spark.ml.MultivariateOnlineSummarizer
 import org.apache.spark.mllib.util.MLUtils
 import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
@@ -159,12 +159,7 @@ class LogisticRegression(override val uid: String)
   extends ProbabilisticClassifier[Vector, LogisticRegression, LogisticRegressionModel]
   with LogisticRegressionParams 
   with DefaultParamsWritable 
-  with Logging 
-  with HasModelDb
-  with CanCache[LogisticRegressionModel] {
-
-  override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
-    new LogisticRegressionSpec(dataset.columns, $(regParam), $(maxIter))
+  with Logging {
 
   def this() = this(Identifiable.randomUID("logreg"))
 
@@ -433,7 +428,7 @@ class LogisticRegression(override val uid: String)
       1.0 / (1.0 + math.exp(-m))
     }
 
-    override val numFeatures: Int = coefficients.size
+    val numFeatures: Int = coefficients.size
 
     override val numClasses: Int = 2
 
