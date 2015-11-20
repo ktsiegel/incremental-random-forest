@@ -10,10 +10,7 @@ import org.apache.spark.ml.classification.{LogisticRegressionModel}
 /**
  * Check whether models are cached in the model database.
  */
-class LogisticRegressionSuite extends FunSuite with BeforeAndAfter {
-  before {
-    TestBase.db.clear()
-  }
+class WahooLogisticRegressionSuite extends FunSuite with BeforeAndAfter {
 
   test("models cached in model database") {
     val training = TestBase.sqlContext.createDataFrame(Seq(
@@ -25,16 +22,16 @@ class LogisticRegressionSuite extends FunSuite with BeforeAndAfter {
     
 
     // Train a Wahoo logistic regression model.
-    val lr = new WahooLogisticRegression()
-    lr.setMaxIter(10).setRegParam(1.0).setDb(TestBase.db)
-    lr.fit(training)
+    val lr = TestBase.wcontext.createLogisticRegression
+    lr.setMaxIter(10).setRegParam(1.0)
+    val (_, fromCache) = lr.fitTest(training)
 
     // The first training should train from scratch.
-    assert(!TestBase.db.fromCache)
+    assert(!fromCache)
 
     // The second training should just read from the cache.
-    lr.fit(training)
-    assert(TestBase.db.fromCache)
+    val (_, fromCache1) = lr.fitTest(training)
+    assert(fromCache1)
   }
 
   /**
@@ -69,17 +66,17 @@ class LogisticRegressionSuite extends FunSuite with BeforeAndAfter {
     val testing = allData(1)
 
     // Train a Wahoo logistic regression model.
-    val lr = new WahooLogisticRegression()
-    lr.setMaxIter(30).setRegParam(0.05).setDb(TestBase.db)
-    val model1 = lr.fit(training)
+    val lr = TestBase.wcontext.createLogisticRegression
+    lr.setMaxIter(30).setRegParam(0.05)
+    val (model1, fromCache1) = lr.fitTest(training)
 
     // The first training should train from scratch.
-    assert(!TestBase.db.fromCache)
+    assert(!fromCache1)
     val accuracy1 = evalModel(model1, testing)
 
     // The second training should just read from the cache.
-    val model2 = lr.fit(training)
-    assert(TestBase.db.fromCache)
+    val (model2, fromCache2) = lr.fitTest(training)
+    assert(fromCache2)
     val accuracy2 = evalModel(model2, testing)
 
     assert(accuracy2 == accuracy1)
