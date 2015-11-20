@@ -2,6 +2,7 @@ package org.apache.spark.ml
 
 import org.apache.spark.SparkContext
 import scalaj.http.{HttpResponse, Http}
+import org.apache.spark.ml.classification.WahooLogisticRegression
 
 /**
  * Main entry point for Wahoo functionality. It is used to initialize the modelDB, start the UI

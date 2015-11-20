@@ -63,7 +63,7 @@ object Classifier {
     val split = mnist.randomSplit(Array(0.7, 0.3))
     val (training, test) = (split(0), split(1))
     val singleClassifer = if (shouldUseWahoo) {
-      new LogisticRegression()
+      new LogisticRegression("whatscookingtest_classifier")
     } else {
       wahooContext.createLogisticRegression
     }.setMaxIter(100)

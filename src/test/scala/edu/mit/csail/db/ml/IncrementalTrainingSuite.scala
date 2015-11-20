@@ -10,43 +10,18 @@ import org.apache.spark.ml.classification.{WahooLogisticRegression, LogisticRegr
 /**
  * Check whether models are cached in the model database.
  */
-class WahooLogisticRegressionSuite extends FunSuite with BeforeAndAfter {
-
-  test("models cached in model database") {
-    TestBase.withContext { (wctx) =>
-      val training = TestBase.sqlContext.createDataFrame(Seq(
-        (1.0, Vectors.dense(0.0, 1.1, 0.1)),
-        (0.0, Vectors.dense(2.0, 1.0, -1.0)),
-        (0.0, Vectors.dense(2.0, 1.3, 1.0)),
-        (1.0, Vectors.dense(0.0, 1.2, -0.5))
-      )).toDF("label", "features")
-
-
-      // Train a Wahoo logistic regression model.
-      val lr = wctx.createLogisticRegression
-      lr.setMaxIter(10).setRegParam(1.0)
-      val (_, fromCache) = lr.fitTest(training)
-
-      // The first training should train from scratch.
-      assert(!fromCache)
-
-      // The second training should just read from the cache.
-      val (_, fromCache1) = lr.fitTest(training)
-      assert(fromCache1)
-    }
-  }
-
+class IncrementalTrainingSuite extends FunSuite with BeforeAndAfter {
   /**
    * Dataset source: UCI Machine Learning Repository
    */
-  test("model caching works with a large dataset") {
-    TestBase.withContext{ (wctx) =>
-      val data = TestBase.sqlContext.read
-        .format("com.databricks.spark.csv")
-        .option("header","true")
-        .option("inferSchema","true")
-        .load("src/test/scala/edu/mit/csail/db/ml/data/test.csv")
+  test("incremental training works") {
+    val data = TestBase.sqlContext.read
+      .format("com.databricks.spark.csv")
+      .option("header","true")
+      .option("inferSchema","true")
+      .load("src/test/scala/edu/mit/csail/db/ml/data/test.csv")
 
+    TestBase.withContext { (wctx) =>
       val toVec = udf[Vector, Int, Double, Double, Double, Double, Int] {
         (a,b,c,d,e,f) => Vectors.dense(a,b,c,d,e,f)
       }
@@ -63,29 +38,42 @@ class WahooLogisticRegressionSuite extends FunSuite with BeforeAndAfter {
         data("year")
       )).withColumn("label", toBinary(data("mpg")))
         .select("features","label")
-        .randomSplit(Array(0.8,0.2))
+        .randomSplit(Array(0.7,0.1,0.2))
 
       val training = allData(0)
-      val testing = allData(1)
+      val incremental = allData(1)
+      val testing = allData(2)
 
       // Train a Wahoo logistic regression model.
       val lr = wctx.createLogisticRegression
-      lr.setMaxIter(30).setRegParam(0.05)
-      val (model1, fromCache1) = lr.fitTest(training)
+      lr.setMaxIter(2).setRegParam(0.05)
+      val model = lr.fit(training)
+      val accuracy = evalModel(model, testing)
+      assert(accuracy > 0.70) // quality check
 
-      // The first training should train from scratch.
-      assert(!fromCache1)
-      val accuracy1 = evalModel(model1, testing)
+      // Train for more iterations and compare to previous model
+      lr.setMaxIter(6)
+      val deltaIterations = 4
+      val modelMoreIter = lr.train(model, training, deltaIterations)
+      val accuracyMoreIter = evalModel(modelMoreIter, testing)
+      // Should be more accurate than previous model trained with fewer iterations
+      assert(accuracyMoreIter >= accuracy)
 
-      // The second training should just read from the cache.
-      val (model2, fromCache2) = lr.fitTest(training)
-      assert(fromCache2)
-      val accuracy2 = evalModel(model2, testing)
+      // Compare to model trained with same total number of iterations
+      val modelTotal = lr.fit(training)
+      val accuracyTotal = evalModel(modelTotal, testing)
+      // Should be similarly accurate to other model, because same # total iterations
+      assert(Math.abs(accuracyTotal - accuracyMoreIter) < 0.1)
 
-      assert(accuracy2 == accuracy1)
+      // Compare to model trained with less data
+      lr.setMaxIter(2)
+      val trainingAndIncremental: DataFrame = training.unionAll(incremental)
+      val modelMoreData = lr.train(model, trainingAndIncremental, deltaIterations)
+      val accuracyMoreData = evalModel(modelMoreData, testing)
+      // Should be more accurate than previous model trained with less data
+      assert(accuracyMoreData >= accuracy)
     }
   }
-
 
   /**
    * This method evaluates a model on a test data set and outputs both
