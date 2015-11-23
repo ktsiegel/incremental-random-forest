@@ -2,19 +2,26 @@ package org.apache.spark.ml
 
 import org.apache.spark.sql.DataFrame
 import com.mongodb.casbah.Imports._
+import com.mongodb.WriteConcern;
 import java.security.MessageDigest
 
 /**
  * This is the model database.
  * Currently, it stores all the models in a single MongoDB collection.
- * It connects to the default localhost:27017.
+ * It connects to to localhost
+ * // TODO: allow connections to arbitrary servers
  */
-class ModelDb(private val databaseName: String, private val modelCollectionName: String) {
+class ModelDb(private val databaseName: String, private val port: Int) {
   /**
    * Set up database connection
    */
-  val mongoClient = MongoClient()
-  val modelCollection = mongoClient(databaseName)(modelCollectionName)
+
+  val modelCollName = "models" // collection storing models trained so far
+  val evalCollName = "eval" // collection storing information on evaluation runs
+  // TODO (mvartak): do we need other tables?
+
+  val mongoClient = MongoClient("localhost", port)
+  val modelCollection = mongoClient(databaseName)(modelCollName)
 
   /**
    * Store this model in the database.
@@ -27,7 +34,7 @@ class ModelDb(private val databaseName: String, private val modelCollectionName:
     val modelObj: MongoDBObject = spec.toDBObject(model)
     // TODO dataframe may not be stored in same table, to allow for folds.
     modelObj += "dataframe" -> hashDataFrame(dataset)
-    modelCollection += modelObj
+    val res = modelCollection.insert( modelObj, WriteConcern.SAFE)
   }
 
   /**
@@ -114,10 +121,27 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
       case Some(db) =>
         db.getOrElse[M](modelSpec(dataset), dataset)(() => {
           val model = super.fit(dataset)
-          db.cache[M](modelSpec(dataset), model, dataset)
+          db.cache[M](modelSpec(dataset), model, dataset) // TODO: this function signature is weird
           model
         })
       case None =>
         super.fit(dataset)
+    }
+
+  // test function to check if the model came form the DB
+  // TODO: this is temporary, need to change/remove
+  def fitTest(dataset: DataFrame): (M, Boolean) =
+    super.getDb match {
+      case Some(db) =>
+        var fromCache = true
+        val model = db.getOrElse[M](modelSpec(dataset), dataset)(() => {
+          val model = super.fit(dataset)
+          db.cache[M](modelSpec(dataset), model, dataset)
+          fromCache = false
+          model
+        })
+        (model, fromCache)
+      case None =>
+        (super.fit(dataset), false)
     }
 }

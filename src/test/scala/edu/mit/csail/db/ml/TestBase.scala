@@ -5,6 +5,9 @@ import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.log4j.{Logger, Level}
 import java.io.File
 
+/**
+ * Object that sets up a generic wahoo config and context for tests
+ */
 object TestBase {
   // Turn off logging.
   Logger.getLogger("org").setLevel(Level.OFF)
@@ -24,6 +27,8 @@ object TestBase {
   val sc = new SparkContext(conf)
   val sqlContext = SQLContext.getOrCreate(sc)
 
-  // Connect to ModelDB.
-  val db = new TestDb(TestConfig.databaseName, TestConfig.modelsCollection)
+  // TODO: this could be specified per test suite. Ok for now
+  val wconf = new WahooConfig().setDbName("wahootest")
+  val wcontext = new WahooContext(sc, wconf)
+  wcontext.resetDb
 }

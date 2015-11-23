@@ -11,12 +11,12 @@ import org.apache.spark.sql.{SQLContext, DataFrame}
 /** Check whether UI displays at all. */
 class UISuite extends FunSuite with BeforeAndAfter {
   before {
-    TestBase.db.clear()
+    TestBase.wcontext.resetDb
   }
 
   // display Wahoo UI
-  test("launch spark ui") {	
-    val webServer = new WahooUI(8080, TestBase.sc)
-    webServer.start()
+  test("launch spark ui") {
+    Desktop.getDesktop().browse(new URI("http://localhost:" +
+      TestBase.wcontext.wahooUI.getPort))
   }
 }

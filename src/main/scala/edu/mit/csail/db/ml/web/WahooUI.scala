@@ -18,7 +18,11 @@ import org.apache.spark.SparkContext
 
 
 /** This class is responsible for producing a web interface for WahooML. */
-class WahooUI(port: Int, context: SparkContext) {
+class WahooUI(port: Int, wc: WahooContext) {
+
+  def getPort: Int = {
+    port
+  }
   /** This class serves an HTML page with a simple greeting */
   class GreetingHandler extends AbstractHandler {
     @throws(classOf[IOException])
@@ -34,6 +38,7 @@ class WahooUI(port: Int, context: SparkContext) {
       baseRequest.setHandled(true)
 
       // create HTML response
+      // TODO (portiz): need to update this
       val sb = new StringBuilder()
       sb.append("<!DOCTYPE html>\n")
       sb.append("<html>\n")
@@ -43,8 +48,7 @@ class WahooUI(port: Int, context: SparkContext) {
       sb.append("  </head>\n")
       sb.append("  <body>\n")
       sb.append("    <script>\"http://code.jquery.com/jquery.js\"</script>\n")
-      sb.append("    <h1>" + context.appName + "</h1>\n")
-      sb.append("    <p>id:" + context.applicationId + "</p>\n")
+      sb.append("    <h1> WahooML </h1>\n")
       sb.append("  </body>\n")
       sb.append("</html>")
 
@@ -54,14 +58,13 @@ class WahooUI(port: Int, context: SparkContext) {
     }
   }
   
-  // This method displays a web UI for an active Spark Context
   def start(launchBrowser: Boolean = false): Unit = {
     val server = new Server(port)
     server.setHandler(new GreetingHandler())
     server.start()
 
     // open the web UI
-	if (launchBrowser) {
+    if (launchBrowser) {
       Desktop.getDesktop().browse(new URI("http://localhost:" + port))
     }
   }

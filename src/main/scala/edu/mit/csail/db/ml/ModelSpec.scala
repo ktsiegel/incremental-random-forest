@@ -29,6 +29,7 @@ abstract class ModelSpec[M <: Model[M]](val features: Array[String]) {
 
   /**
    * Creates the database object corresponding to a Model.
+   * This DB object is the thing that will be inserted into the DB
    * @param model - the Model that will be converted into a DB object.
    * @return a MongoDB object storing information about this Model and
    *         this ModelSpec.
@@ -36,7 +37,7 @@ abstract class ModelSpec[M <: Model[M]](val features: Array[String]) {
   def toDBObject(model: M): MongoDBObject
 
   /**
-   * Creates a database object corresponding to a ModelSpec.
+   * Creates a database query corresponding to a ModelSpec.
    * Used to query the DB for all models stemming for a certain ModelSpec.
    * @return a MongoDB object storing information about this ModelSpec.
    */
