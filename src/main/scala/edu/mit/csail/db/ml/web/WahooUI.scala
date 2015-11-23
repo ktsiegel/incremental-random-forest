@@ -31,20 +31,8 @@ class WahooUI(port: Int, wc: WahooContext) extends App {
 
     import Directives._
 
-    val echoService: Flow[Message, Message, _] = Flow[Message].map {
-      case TextMessage.Strict(txt) => TextMessage("ECHO: " + txt)
-        case _ => TextMessage("Message type unsupported")
-    }
-    val route = get {
-      pathEndOrSingleSlash {
-        complete("Welcome to websocket server")
-      }
-    } ~
-    path("ws-echo") {
-      get {
-        handleWebsocketMessages(echoService)
-      }
-    }
+    val route = MainService.route ~ EchoService.route
+
     val binding = Http().bindAndHandle(route, interface, port)
     println(s"Server is now online at http://$interface:$port\nPress RETURN to stop...")
     StdIn.readLine()
