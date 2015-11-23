@@ -13,12 +13,16 @@ import scala.sys.process._
 import org.eclipse.jetty.server.Request
 import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.handler.AbstractHandler
+import org.eclipse.jetty.client.HttpClient
+import org.eclipse.jetty.client.api.ContentResponse
 
 import org.apache.spark.SparkContext
 
 
 /** This class is responsible for producing a web interface for WahooML. */
 class WahooUI(port: Int, wc: WahooContext) {
+  val client: HttpClient = new HttpClient()
+  client.start()
 
   def getPort: Int = {
     port
@@ -62,10 +66,9 @@ class WahooUI(port: Int, wc: WahooContext) {
     val server = new Server(port)
     server.setHandler(new GreetingHandler())
     server.start()
+  }
 
-    // open the web UI
-    if (launchBrowser) {
-      Desktop.getDesktop().browse(new URI("http://localhost:" + port))
-    }
+  def log(message: String) = {
+    val response: ContentResponse = client.POST("http://localhost:3000").send()
   }
 }

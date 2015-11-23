@@ -10,6 +10,7 @@ libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.5.1" % "provided
 
 libraryDependencies += "org.eclipse.jetty" % "jetty-webapp" % "9.1.0.v20131115"
 libraryDependencies += "org.eclipse.jetty" % "jetty-plus" % "9.1.0.v20131115"
+libraryDependencies += "org.eclipse.jetty" % "jetty-client" % "9.2.10.v20150310"
 
 libraryDependencies += "org.mongodb" %% "casbah" % "3.0.0"
 libraryDependencies += "com.databricks" %% "spark-csv" % "1.2.0"
