@@ -26,20 +26,34 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', routes);
 app.use('/users', users);
 
+console.log("here");
+
+var http = require('http');
+
+// USE WEBSOCKETS
+var WebSocket = require('ws');
+
+var ws = new WebSocket('ws://localhost:8089/ws-echo');
+ws.on('open', function open() {
+    ws.send('something');
+});
+
+
 
 // socket.io
-var socket = io('ws://localhost:8089/ws-echo');
-socket.on('connect', function() {
-  console.log('connection!');
-  socket.emit('server custom event');
-});
-socket.on('event', function(data) {
-  console.log('event');
-  console.log(data);
-});
-socket.on('disconnect', function() {
-  console.log('disconnected');
-});
+//var socket = io('ws://localhost:8089/ws-echo');
+//socket.connect();
+//socket.on('connect', function() {
+//  console.log('connection!');
+//  socket.emit('server custom event');
+//});
+//socket.on('event', function(data) {
+//  console.log('event');
+//  console.log(data);
+//});
+//socket.on('disconnect', function() {
+//  console.log('disconnected');
+//});
 
 
 // catch 404 and forward to error handler
