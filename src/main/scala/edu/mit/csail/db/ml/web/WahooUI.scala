@@ -6,6 +6,10 @@ import akka.http.scaladsl.Http
 import akka.http.scaladsl.server.Directives
 import akka.stream.ActorMaterializer
 
+import akka.http.scaladsl.model.ws.{Message, TextMessage}
+import akka.http.scaladsl.server.Route
+import akka.stream.scaladsl.Flow
+
 import scala.io.StdIn
 
 import org.apache.spark.SparkContext
@@ -27,9 +31,18 @@ class WahooUI(port: Int, wc: WahooContext) extends App {
 
     import Directives._
 
+    val echoService: Flow[Message, Message, _] = Flow[Message].map {
+      case TextMessage.Strict(txt) => TextMessage("ECHO: " + txt)
+        case _ => TextMessage("Message type unsupported")
+    }
     val route = get {
       pathEndOrSingleSlash {
         complete("Welcome to websocket server")
+      }
+    } ~
+    path("ws-echo") {
+      get {
+        handleWebsocketMessages(echoService)
       }
     }
     val binding = Http().bindAndHandle(route, interface, port)
