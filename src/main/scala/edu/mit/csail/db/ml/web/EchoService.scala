@@ -13,7 +13,10 @@ object EchoService extends WebService {
   }
 
   val echoService: Flow[Message, Message, _] = Flow[Message].map {
-    case TextMessage.Strict(txt) => TextMessage("ECHO: " + txt)
+    case TextMessage.Strict(txt) => {
+      println("received message")
+      TextMessage("ECHO: " + txt)
+    }
     case _ => TextMessage("Message type unsupported")
   }
 }

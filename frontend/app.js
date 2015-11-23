@@ -4,6 +4,7 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
+var io = require('socket.io-client');
 
 var routes = require('./routes/index');
 var users = require('./routes/users');
@@ -24,6 +25,22 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
 app.use('/users', users);
+
+
+// socket.io
+var socket = io('ws://localhost:8089/ws-echo');
+socket.on('connect', function() {
+  console.log('connection!');
+  socket.emit('server custom event');
+});
+socket.on('event', function(data) {
+  console.log('event');
+  console.log(data);
+});
+socket.on('disconnect', function() {
+  console.log('disconnected');
+});
+
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
