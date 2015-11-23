@@ -128,7 +128,7 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
         super.fit(dataset)
     }
 
-  // test function to check if the model came form the DB
+  // test function to check if the model came from the DB
   // TODO: this is temporary, need to change/remove
   def fitTest(dataset: DataFrame): (M, Boolean) =
     super.getDb match {

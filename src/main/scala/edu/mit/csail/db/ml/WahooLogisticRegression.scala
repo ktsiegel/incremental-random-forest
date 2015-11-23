@@ -63,4 +63,9 @@ with HasModelDb with CanCache[LogisticRegressionModel] {
   def this(wc: WahooContext) = this(Identifiable.randomUID("logreg"), wc)
   override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
     new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
+
+  override def fit(dataset: DataFrame): LogisticRegressionModel = {
+    // wc.log("fit function called")
+    super.fit(dataset)
+  }
 }

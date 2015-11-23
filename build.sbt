@@ -13,6 +13,7 @@ libraryDependencies += "org.eclipse.jetty" % "jetty-plus" % "9.1.0.v20131115"
 
 libraryDependencies += "org.mongodb" %% "casbah" % "3.0.0"
 libraryDependencies += "com.databricks" %% "spark-csv" % "1.2.0"
+libraryDependencies += "com.typesafe.akka" %% "akka-http-experimental" % "1.0"
 
 libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
 

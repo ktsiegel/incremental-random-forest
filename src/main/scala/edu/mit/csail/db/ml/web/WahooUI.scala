@@ -1,71 +1,48 @@
 package org.apache.spark.ml
 
-import java.awt.Desktop
-import java.io.IOException
-import java.net.URI
-import javax.servlet.http.HttpServletRequest
-import javax.servlet.http.HttpServletResponse
-import javax.servlet.ServletException
-
-import scala.collection.mutable.StringBuilder
-import scala.sys.process._
-
-import org.eclipse.jetty.server.Request
-import org.eclipse.jetty.server.Server
 import org.eclipse.jetty.server.handler.AbstractHandler
+import akka.actor.ActorSystem
+import akka.http.scaladsl.Http
+import akka.http.scaladsl.server.Directives
+import akka.stream.ActorMaterializer
+
+import scala.io.StdIn
 
 import org.apache.spark.SparkContext
 
 
+
 /** This class is responsible for producing a web interface for WahooML. */
-class WahooUI(port: Int, wc: WahooContext) {
+class WahooUI(port: Int, wc: WahooContext) extends App {
 
   def getPort: Int = {
     port
   }
-  /** This class serves an HTML page with a simple greeting */
-  class GreetingHandler extends AbstractHandler {
-    @throws(classOf[IOException])
-    @throws(classOf[ServletException])
-    override def handle(
-    	target: String, 
-    	baseRequest: Request, 
-    	request: HttpServletRequest,
-        response: HttpServletResponse): Unit = {
-      response.setContentType("text/html;charset=utf-8")
-      response.setStatus(HttpServletResponse.SC_OK)
+ 
+  def start(launchBrowser: Boolean = false): Unit = {
+    implicit val actorSystem = ActorSystem("akka-system")
+    implicit val flowMaterializer = ActorMaterializer()
 
-      baseRequest.setHandled(true)
+    val interface = "localhost"
 
-      // create HTML response
-      // TODO (portiz): need to update this
-      val sb = new StringBuilder()
-      sb.append("<!DOCTYPE html>\n")
-      sb.append("<html>\n")
-      sb.append("  <head>\n")
-      sb.append("    <title>WahooML</title>\n")
-      sb.append("    <link href=\"css/bootstrap.css\" rel=\"stylesheet\" media=\"screen\">")
-      sb.append("  </head>\n")
-      sb.append("  <body>\n")
-      sb.append("    <script>\"http://code.jquery.com/jquery.js\"</script>\n")
-      sb.append("    <h1> WahooML </h1>\n")
-      sb.append("  </body>\n")
-      sb.append("</html>")
+    import Directives._
 
-      // serve HTML page
-      val writer = response.getWriter()
-      writer.print(sb.toString)
+    val route = get {
+      pathEndOrSingleSlash {
+        complete("Welcome to websocket server")
+      }
     }
+    val binding = Http().bindAndHandle(route, interface, port)
+    println(s"Server is now online at http://$interface:$port\nPress RETURN to stop...")
+    StdIn.readLine()
+
+    import actorSystem.dispatcher
+
+    binding.flatMap(_.unbind()).onComplete(_ => actorSystem.shutdown())
+    println("Server is down...")
   }
   
-  def start(launchBrowser: Boolean = false): Unit = {
-    val server = new Server(port)
-    server.setHandler(new GreetingHandler())
-    server.start()
-
-    // open the web UI
-    if (launchBrowser) {
-      Desktop.getDesktop().browse(new URI("http://localhost:" + port))
-    }
-  }
+  // TODO
+  // def log(message: String): Unit = {
+  // }
 }
