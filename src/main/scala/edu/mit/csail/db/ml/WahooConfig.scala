@@ -16,6 +16,7 @@ class WahooConfig () {
   def setDbName(dbName: String) = set(WahooDbName, dbName)
   def setDbPort(dbPort: String) = set(WahooDbPort, dbPort)
   def setUiPort(uiPort: String) = set(WahooUiPort, uiPort)
+  def setServerUrl(url: String) = set(WahooNodeJsName, url)
 
   /** Set a configuration variable. */
   def set(key: String, value: String): WahooConfig = {
@@ -60,7 +61,6 @@ class WahooConfig () {
 // TODO: is this the best way to specify default?
 object WahooConfig {
   val WahooNodeJsName = "wahoo.nodejs"
-  val WahooNodeJsServerUrl = "http://localhost:3000"
   val WahooDbName = "wahoo.dbName"
   val WahooDefaultDbName = "wahooDb"
   val WahooDbPort = "wahoo.dbPort"

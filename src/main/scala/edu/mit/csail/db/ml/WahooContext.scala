@@ -9,7 +9,7 @@ import scalaj.http.Http
  *
  * @param sc SparkContext to be used by Wahoo to execute jobs
  */
-class WahooContext (sc: SparkContext, wc: WahooConfig) {
+class WahooContext (sc: SparkContext, var wc: WahooConfig) {
   // set up modelDB
   var modelDB = new ModelDb(
     wc.get(WahooConfig.WahooDbName, WahooConfig.WahooDefaultDbName),
@@ -34,9 +34,10 @@ class WahooContext (sc: SparkContext, wc: WahooConfig) {
    * @param data The sequence of pairs to POST to the server. It will be turned into a 
    * JSON structure.
    */
-  def log(data: Seq[(String, String)]) =
-    Http(wc.get(WahooConfig.WahooNodeJsName, 
-      WahooConfig.WahooNodeJsServerUrl)).postForm(data).asString
+  def log(data: Seq[(String, String)]) = wc.getOption(WahooConfig.WahooNodeJsName) match {
+    case Some(url) => Http(url).postForm(data).asString
+    case None => {} 
+  }
 
   def log_msg(msg: String) = {
     val appId = sc.applicationId

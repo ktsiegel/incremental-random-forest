@@ -11,9 +11,10 @@ import org.scalatest.{FunSuite, BeforeAndAfter}
  */
 class NodeLoggerSuite extends FunSuite with BeforeAndAfter {
   test("logging events to the central node.js server") {
-    val wc = TestBase.wcontext
+    val wctx = TestBase.wcontext
+    wctx.wc.setServerUrl("http://localhost:3000")
 
-    wc.log_msg("Loading data")
+    wctx.log_msg("Loading data")
     val training = TestBase.sqlContext.createDataFrame(Seq(
       (34.0, Vectors.dense(0.0, 1.1, 0.1)),
       (6.0, Vectors.dense(2.0, 1.0, -1.0)),
@@ -25,13 +26,13 @@ class NodeLoggerSuite extends FunSuite with BeforeAndAfter {
     val lr = TestBase.wcontext.createLinearRegression
     lr.setMaxIter(10).setRegParam(1.0)
 
-    wc.log_msg("Training")
+    wctx.log_msg("Training")
     lr.fit(training)
-    wc.log_msg("Finished training")
+    wctx.log_msg("Finished training")
 
-    wc.log_msg("Training another")
+    wctx.log_msg("Training another")
    // The second training should just read from the cache.
     lr.fit(training) // hack something weird about reusing tuples
-    wc.log_msg("Finished training another")
+    wctx.log_msg("Finished training another")
   }
 }
