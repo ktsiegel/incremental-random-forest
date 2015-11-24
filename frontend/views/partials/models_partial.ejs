@@ -1,16 +1,25 @@
-Hello, models!
-
-<% models.forEach(function(model) { %>
-<br>
-<%= model.uid %>
-<br>
-<%= model.weights %>
-<br>
-<%= model.intercept %>
-<br>
-<%= model.modelspec %>
-<br>
-<%= model.dataframe %>
-<br>
-
-<% }); %>
+<div class="container">
+  <h2>Models</h2>
+  <table class="table table-striped">
+    <thead>
+      <tr>
+        <th>UID</th>
+        <th>Weights</th>
+        <th>Intercept</th>
+        <th>ModelSpec</th>
+        <th>DataFrame</th>
+      </tr>
+    </thead>
+	<tbody>
+	  <% models.forEach(function(model) { %>
+	  <tr>
+	    <td><%= model.uid %></td>
+		<td><%= model.weights %></td>
+		<td><%= model.intercept %></td>
+		<td><%= model.modelspec %></td>
+		<td><%= model.dataframe %></td>
+	  </tr>
+	  <% }); %>
+    </tbody>
+  </table>
+</div>
