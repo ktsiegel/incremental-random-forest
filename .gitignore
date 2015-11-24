@@ -16,3 +16,6 @@ target/*
 
 # Ignore the testLog directory created by the unit tests.
 testLog/
+
+# Ignore the node app dependencies.
+node_modules/
