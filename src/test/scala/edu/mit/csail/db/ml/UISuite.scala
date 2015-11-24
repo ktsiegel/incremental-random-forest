@@ -14,6 +14,7 @@ import org.apache.spark.ml.classification.{LogisticRegressionModel}
 
 /** Check whether UI displays at all. */
 class UISuite extends FunSuite with BeforeAndAfter {
+  /*
   before {
     TestBase.wcontext.resetDb
   }
@@ -24,10 +25,12 @@ class UISuite extends FunSuite with BeforeAndAfter {
     //   TestBase.wcontext.wahooUI.getPort))
     TestBase.wcontext.wahooUI.log("hello");
   }
+  */
 
   /**
    * Dataset source: UCI Machine Learning Repository
    */
+  /*
   test("model caching works with a large dataset") {
     val data = TestBase.sqlContext.read
       .format("com.databricks.spark.csv")
@@ -72,6 +75,7 @@ class UISuite extends FunSuite with BeforeAndAfter {
 
     assert(accuracy2 == accuracy1)
   }
+  */
 
 
   /**
@@ -83,6 +87,7 @@ class UISuite extends FunSuite with BeforeAndAfter {
    * @param testing - the testing data
    * @return the accuracy of the model on the testing data
    */
+  /*
   def evalModel(model: LogisticRegressionModel, testing: DataFrame): Double = {
     var count = 0.0
     var pos = 0.0
@@ -95,6 +100,7 @@ class UISuite extends FunSuite with BeforeAndAfter {
       }
     pos/count
   }
+  */
 
 
 }

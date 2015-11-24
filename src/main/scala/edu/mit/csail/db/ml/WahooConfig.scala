@@ -67,6 +67,8 @@ class WahooConfig () {
 
 // TODO: is this the best way to specify default?
 object WahooConfig {
+  val WahooNodeJsName = "wahoo.nodejs"
+  val WahooNodeJsServerUrl = "http://localhost:3000"
   val WahooDbName = "wahoo.dbName"
   val WahooDefaultDbName = "wahooDb"
   val WahooDbPort = "wahoo.dbPort"

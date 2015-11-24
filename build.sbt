@@ -16,6 +16,7 @@ libraryDependencies += "org.mongodb" %% "casbah" % "3.0.0"
 libraryDependencies += "com.databricks" %% "spark-csv" % "1.2.0"
 
 libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test"
+libraryDependencies +=  "org.scalaj" %% "scalaj-http" % "2.0.0"
 
 resolvers += "Akka Repository" at "http://repo.akka.io/releases/"
 resolvers += "Sonatype OSS Snapshots" at "https://oss.sonatype.org/content/repositories/snapshots"
