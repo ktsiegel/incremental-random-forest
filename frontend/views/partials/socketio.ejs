@@ -1,0 +1,14 @@
+<script src="/socket.io/socket.io.js"></script>
+<script>
+  var socket = io.connect('http://localhost:3000');
+  console.log("connected");
+  socket.on('connection', function (data) {
+    console.log(data);
+    socket.emit('ack', { status: 'Success!' });
+  });
+  socket.on('message', function(data) {
+    console.log(data);
+    var message = $('<div class="message">' + data.message + '</div>');
+    $('#run-container').append(message);
+  });
+</script>

@@ -4,7 +4,6 @@ var favicon = require('serve-favicon');
 var logger = require('morgan');
 var cookieParser = require('cookie-parser');
 var bodyParser = require('body-parser');
-var socket_io = require('socket.io');
 
 var routes = require('./routes/index');
 
@@ -23,23 +22,6 @@ app.use(cookieParser());
 app.use(express.static(path.join(__dirname, 'public')));
 
 app.use('/', routes);
-
-
-// socket.io
-var io = socket_io();
-app.io = io;
-io.on('connection', function (socket) {
-  console.log("connection!");
-  socket.emit('connection', { message: 'connected!' });
-  socket.on('ack', function (data) {
-    console.log(data);
-  });
-});
-app.use(function(req, res, next) {
-  req.io = io;
-  next();
-});
-
 
 // catch 404 and forward to error handler
 app.use(function(req, res, next) {
