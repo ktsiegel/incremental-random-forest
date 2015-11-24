@@ -5,12 +5,15 @@ import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.scalatest.{FunSuite, BeforeAndAfter}
 
 
-class WahooLinearRegressionSuite extends FunSuite with BeforeAndAfter {
-  before {
-    TestBase.wcontext.resetDb
-  }
+/**
+ * This test will attempt to log messages to the central node server. Make sure you have the node
+ * server running on http://localhost:3000
+ */
+class NodeLoggerSuite extends FunSuite with BeforeAndAfter {
+  test("logging events to the central node.js server") {
+    val wc = TestBase.wcontext
 
-  test("are models cached in the model database?") {
+    wc.log_msg("Loading data")
     val training = TestBase.sqlContext.createDataFrame(Seq(
       (34.0, Vectors.dense(0.0, 1.1, 0.1)),
       (6.0, Vectors.dense(2.0, 1.0, -1.0)),
@@ -18,17 +21,17 @@ class WahooLinearRegressionSuite extends FunSuite with BeforeAndAfter {
       (11.0, Vectors.dense(0.0, 1.2, -0.5))
     )).toDF("label", "features")
 
-
     // Train a Wahoo Linear regression model.
     val lr = TestBase.wcontext.createLinearRegression
     lr.setMaxIter(10).setRegParam(1.0)
-    val (_, fromCache) = lr.fitTest(training)
 
-    // The first training should train from scratch.
-    assert(!fromCache)
+    wc.log_msg("Training")
+    lr.fit(training)
+    wc.log_msg("Finished training")
 
+    wc.log_msg("Training another")
    // The second training should just read from the cache.
-    val (_, fromCache2) = lr.fitTest(training) // hack something weird about reusing tuples
-    assert(fromCache2)
+    lr.fit(training) // hack something weird about reusing tuples
+    wc.log_msg("Finished training another")
   }
 }
