@@ -4,6 +4,8 @@ import akka.http.scaladsl.model.ws.{Message, TextMessage}
 import akka.http.scaladsl.server.Directives._
 import akka.http.scaladsl.server.Route
 import akka.stream.scaladsl.Flow
+import spray.json._
+import DefaultJsonProtocol._
 
 object EchoService extends WebService {
   override def route: Route = path("ws-echo") {
@@ -15,7 +17,9 @@ object EchoService extends WebService {
   val echoService: Flow[Message, Message, _] = Flow[Message].map {
     case TextMessage.Strict(txt) => {
       println("received message")
-      TextMessage("ECHO: " + txt)
+      val msg = Map("echo" -> txt).toJson.compactPrint
+      println("will echo back", msg)
+      TextMessage(msg)
     }
     case _ => TextMessage("Message type unsupported")
   }

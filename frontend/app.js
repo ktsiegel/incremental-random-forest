@@ -38,6 +38,13 @@ ws.on('open', function open() {
     ws.send('something');
 });
 
+// TODO: If the message is too long, I think it will get broken into pieces, so, we should buffer
+// those pieces until we reconstruct the whole message.
+ws.on('message', function on_message(data) {
+  data = JSON.parse(data);
+  console.log("got echoed result = " + data["echo"]);
+});
+
 
 
 // socket.io

@@ -19,3 +19,7 @@ testLog/
 
 # Ignore the node app dependencies.
 node_modules/
+
+# Ignore the debug log for npm
+npm-debug.log
+
