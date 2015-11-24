@@ -34,11 +34,9 @@ class WahooContext (sc: SparkContext, wc: WahooConfig) {
    * @param data The sequence of pairs to POST to the server. It will be turned into a 
    * JSON structure.
    */
-  def log(data: Seq[(String, String)]) =  {
-    val resp = Http(wc.get(WahooConfig.WahooNodeJsName, 
+  def log(data: Seq[(String, String)]) =
+    Http(wc.get(WahooConfig.WahooNodeJsName, 
       WahooConfig.WahooNodeJsServerUrl)).postForm(data).asString
-    println("resp is ", resp)
-  }
 
   def log_msg(msg: String) = log(Seq("message" -> msg))
 

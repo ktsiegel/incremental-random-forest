@@ -22,7 +22,7 @@ class UISuite extends FunSuite with BeforeAndAfter {
   // display Wahoo UI
   test("launch spark ui") {
     // Desktop.getDesktop().browse(new URI("http://localhost:" +
-    //   TestBase.wcontext.wahooUI.getPort))
+    //   TestBase.wcontext.wahooUI.port))
     TestBase.wcontext.wahooUI.log("hello");
   }
   */
