@@ -6,3 +6,15 @@ body {
 a {
   color: #00B7FF;
 }
+
+h1#welcome {
+  font-size: 32px;
+}
+
+h2#welcome-smaller {
+  font-size: 20px;
+}
+
+.jumbotron {
+  text-align: center;
+}
