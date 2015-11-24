@@ -10,6 +10,8 @@ router.get('/', function(req, res, next) {
 
 router.post('/', function(req, res, next) {
   console.log("received request with body: " + req.body);
+  var io = req.io;
+  io.emit('message', req.body);
   res.send("received!");
 });
 
