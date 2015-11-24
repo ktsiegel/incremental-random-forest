@@ -1,6 +1,8 @@
 var express = require('express');
 var router = express.Router();
 
+var modelUtils = require('../models/modelUtils');
+
 /* GET home page. */
 router.get('/', function(req, res, next) {
   res.render('index', {});
@@ -12,7 +14,12 @@ router.post('/', function(req, res, next) {
 });
 
 router.get('/models', function(req, res, next) {
-  res.render('models', {});
+  modelUtils.findAll(function(err, allModels) {
+    if (err) { res.status(500).send(); }
+    else {
+      res.render('models', { models: allModels });
+    }
+  });
 });
 
 router.get('/runs', function(req, res, next) {
