@@ -26,13 +26,8 @@ class NodeLoggerSuite extends FunSuite with BeforeAndAfter {
     val lr = TestBase.wcontext.createLinearRegression
     lr.setMaxIter(10).setRegParam(1.0)
 
-    wctx.log_msg("Training")
     lr.fit(training)
-    wctx.log_msg("Finished training")
-
-    wctx.log_msg("Training another")
    // The second training should just read from the cache.
     lr.fit(training) // hack something weird about reusing tuples
-    wctx.log_msg("Finished training another")
   }
 }
