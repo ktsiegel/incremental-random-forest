@@ -13,17 +13,9 @@ class WahooConfig () {
   import WahooConfig._
   private val settings = new ConcurrentHashMap[String, String]()
 
-  def setDbName(dbName: String): WahooConfig = {
-    set(WahooDbName, dbName)
-  }
-
-  def setDbPort(dbName: String): WahooConfig = {
-    set(WahooDbPort, dbName)
-  }
-
-  def setUiPort(dbName: String): WahooConfig = {
-    set(WahooUiPort, dbName)
-  }
+  def setDbName(dbName: String) = set(WahooDbName, dbName)
+  def setDbPort(dbPort: String) = set(WahooDbPort, dbPort)
+  def setUiPort(uiPort: String) = set(WahooUiPort, uiPort)
 
   /** Set a configuration variable. */
   def set(key: String, value: String): WahooConfig = {
