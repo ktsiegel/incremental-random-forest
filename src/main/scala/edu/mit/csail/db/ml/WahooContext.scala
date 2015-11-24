@@ -38,7 +38,10 @@ class WahooContext (sc: SparkContext, wc: WahooConfig) {
     Http(wc.get(WahooConfig.WahooNodeJsName, 
       WahooConfig.WahooNodeJsServerUrl)).postForm(data).asString
 
-  def log_msg(msg: String) = log(Seq("message" -> msg))
+  def log_msg(msg: String) = {
+    val appId = sc.applicationId
+    log(Seq("message" -> s"$appId: $msg"))
+  }
 
   // factory methods
   // TODO: make setDb chain like the rest. Related to issue #35
