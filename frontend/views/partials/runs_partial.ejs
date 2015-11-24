@@ -1,4 +1,7 @@
 Hello, runs!
 
 <div id="run-container">
+<% runLogs.forEach(function(run) { %>
+  <div class="message"><%= run.message %></div>
+<% }) %>
 </div>

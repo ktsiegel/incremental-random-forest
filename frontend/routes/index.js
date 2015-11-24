@@ -1,6 +1,7 @@
 var express = require('express');
 var router = express.Router();
 var io = require('../io');
+var runLogs = require("../models/runLogs")
 
 var modelUtils = require('../models/modelUtils');
 
@@ -11,6 +12,7 @@ router.get('/', function(req, res, next) {
 
 router.post('/', function(req, res, next) {
   console.log("received request with body: " + req.body);
+  runLogs.push(req.body);
   io.emit('message', req.body);
   res.send("received!");
 });
@@ -25,7 +27,7 @@ router.get('/models', function(req, res, next) {
 });
 
 router.get('/runs', function(req, res, next) {
-  res.render('runs', {});
+  res.render('runs', {"runLogs": runLogs});
 });
 
 module.exports = router;
