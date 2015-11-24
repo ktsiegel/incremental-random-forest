@@ -14,7 +14,6 @@ class NodeLoggerSuite extends FunSuite with BeforeAndAfter {
     val wctx = TestBase.wcontext
     wctx.wc.setServerUrl("http://localhost:3000")
 
-    wctx.log_msg("Loading data")
     val training = TestBase.sqlContext.createDataFrame(Seq(
       (34.0, Vectors.dense(0.0, 1.1, 0.1)),
       (6.0, Vectors.dense(2.0, 1.0, -1.0)),
