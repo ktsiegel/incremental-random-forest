@@ -11,4 +11,12 @@ router.post('/', function(req, res, next) {
   res.send("received!");
 });
 
+router.get('/models', function(req, res, next) {
+  res.render('models', {});
+});
+
+router.get('/runs', function(req, res, next) {
+  res.render('runs', {});
+});
+
 module.exports = router;
