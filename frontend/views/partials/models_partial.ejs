@@ -1,0 +1,35 @@
+<h3>Models</h3>
+<div class="container">
+  <table class="table table-striped row">
+    <thead>
+      <tr class="row">
+        <th>UID</th>
+        <th>Weights</th>
+        <th>Intercept</th>
+        <th>ModelSpec</th>
+        <th>DataFrame ID</th>
+      </tr>
+    </thead>
+	<tbody>
+	  <% models.forEach(function(model) { %>
+	  <tr class="row">
+	    <td class="col-sm-2"><%= model.uid %></td>
+		  <td class="col-sm-3">
+        <% model.weights.forEach(function(weight) { %>
+          <p><%= weight %></p>
+        <% }); %>
+      </td>
+		  <td class="col-sm-2"><%= model.intercept.toFixed(2) %></td>
+		  <td class="col-sm-3">
+        <% for (var key in model.modelspec) { %>
+          <% if (model.modelspec.hasOwnProperty(key)) { %>
+            <p><%=key%>: <%=model.modelspec[key]%></p>
+          <% } %>
+        <% } %>
+      </td>
+		  <td class="col-sm-2"><%= model.dataframe.slice(0,10) %>...</td>
+	  </tr>
+	  <% }); %>
+    </tbody>
+  </table>
+</div>

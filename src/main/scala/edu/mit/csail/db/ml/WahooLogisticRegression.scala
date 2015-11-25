@@ -50,6 +50,11 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
       dbObject.asDouble("intercept")
     )
   }
+
+  override def toString(): String = {
+    val featureString = features.mkString("[", ", ", "]")
+    s"LogisticRegression(features=$featureString, regParam=$regParam, maxIter=$maxIter)"
+  }
 }
 
 /**
@@ -59,6 +64,21 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
 class WahooLogisticRegression(uid: String, wc: WahooContext) extends LogisticRegression(uid)
 with HasModelDb with CanCache[LogisticRegressionModel] {
   this.setDb(wc.modelDB) // TODO: may go away if we change the cancache traits
+
+  override def train(dataset: DataFrame): LogisticRegressionModel = {
+    wc.log_msg(s"Running model $uid")
+    val ms = modelSpec(dataset).toString
+    wc.log_msg(s"ModelSpec: $ms")
+    val model = super.train(dataset)
+    wc.log_msg(s"Training complete")
+    val summary = model.summary
+    val numIter = summary.totalIterations
+    val objhist = summary.objectiveHistory.mkString("[", ", ", "]")
+    wc.log_msg(s"Objective History: $objhist")
+    wc.log_msg(s"# Iterations: $numIter")
+    wc.log_msg(s"Finished model $uid")
+    model
+  }
 
   def this(wc: WahooContext) = this(Identifiable.randomUID("logreg"), wc)
   override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =

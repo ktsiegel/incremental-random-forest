@@ -16,3 +16,7 @@ target/*
 
 # Ignore the testLog directory created by the unit tests.
 testLog/
+
+# Ignore node files
+node_modules/
+npm-debug.log
