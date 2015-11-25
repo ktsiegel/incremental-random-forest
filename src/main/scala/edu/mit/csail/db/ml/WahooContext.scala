@@ -16,13 +16,6 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
     wc.getInt(WahooConfig.WahooDbPort, WahooConfig.WahooDefaultDbPort)
   )
 
-  // TODO: Discuss what to do with the WahooUI.
-  /*
-  var wahooUI = new WahooUI(
-    wc.getInt(WahooConfig.WahooUiPort, WahooConfig.WahooDefaultUiPort), this)
-  wahooUI.start()
-  */
-
   // test methods
   def resetDb: Unit = {
     modelDB.clear()
@@ -39,6 +32,10 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
     case None => {} 
   }
 
+  /**
+   * Formats log message before it will be sent to the central Node.js server.
+   * @param msg The message passed by the Spark job.
+   */
   def log_msg(msg: String) = {
     val appId = sc.applicationId
     log(Seq("message" -> s"$appId: $msg"))
