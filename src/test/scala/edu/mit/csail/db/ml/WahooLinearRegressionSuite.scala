@@ -6,10 +6,6 @@ import org.scalatest.{FunSuite, BeforeAndAfter}
 
 
 class WahooLinearRegressionSuite extends FunSuite with BeforeAndAfter {
-  before {
-    TestBase.wcontext.resetDb
-  }
-
   test("are models cached in the model database?") {
     val training = TestBase.sqlContext.createDataFrame(Seq(
       (34.0, Vectors.dense(0.0, 1.1, 0.1)),
@@ -17,7 +13,6 @@ class WahooLinearRegressionSuite extends FunSuite with BeforeAndAfter {
       (5.0, Vectors.dense(2.0, 1.3, 1.0)),
       (11.0, Vectors.dense(0.0, 1.2, -0.5))
     )).toDF("label", "features")
-
 
     // Train a Wahoo Linear regression model.
     val lr = TestBase.wcontext.createLinearRegression
