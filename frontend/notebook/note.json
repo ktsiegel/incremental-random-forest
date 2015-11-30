@@ -1,0 +1,121 @@
+{
+  "paragraphs": [
+    {
+      "text": "%dep\nz.load(\"/Users/portiz/.ivy2/cache/org.mongodb/mongo-java-driver/jars/mongo-java-driver-3.0.4.jar\")\nz.load(\"/Users/portiz/.ivy2/cache/org.mongodb/casbah-core_2.11/jars/casbah-core_2.11-3.0.0.jar\")\nz.load(\"/Users/portiz/Documents/Projects/Self/Software/github/ml-project/target/scala-2.11/ml-project_2.11-1.0.jar\")",
+      "dateUpdated": "Nov 29, 2015 1:46:40 AM",
+      "config": {
+        "colWidth": 12.0,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/scala"
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1448659427299_-1955787735",
+      "id": "20151127-162347_190073594",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TEXT",
+        "msg": "res0: org.apache.zeppelin.spark.dep.Dependency \u003d org.apache.zeppelin.spark.dep.Dependency@465e6171\n"
+      },
+      "dateCreated": "Nov 27, 2015 4:23:47 PM",
+      "dateStarted": "Nov 29, 2015 1:46:40 AM",
+      "dateFinished": "Nov 29, 2015 1:46:45 AM",
+      "status": "FINISHED",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "%spark\nimport org.apache.spark.ml.{ModelDb, WahooConfig, WahooContext}\nimport org.apache.spark.{SparkContext, SparkConf}\nimport org.apache.spark.sql.{SQLContext, DataFrame}\nimport org.apache.log4j.{Logger, Level}\nimport java.io.File\n\n// Make the log directory, if it doesn\u0027t already exist.\nvar logDir \u003d \"testLog\"\nnew File(logDir).mkdir()\n\nval wconf \u003d new WahooConfig().setDbName(\"wahootest\")\nval wcontext \u003d new WahooContext(z.sc, wconf)\nwcontext.resetDb\n\nprint(System.getProperty(\"user.dir\"))",
+      "dateUpdated": "Nov 29, 2015 1:46:47 AM",
+      "config": {
+        "colWidth": 12.0,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        },
+        "editorMode": "ace/mode/scala",
+        "tableHide": false
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1448659434907_-575678106",
+      "id": "20151127-162354_956135201",
+      "result": {
+        "code": "ERROR",
+        "type": "TEXT",
+        "msg": "import org.apache.spark.ml.{ModelDb, WahooConfig, WahooContext}\nimport org.apache.spark.{SparkContext, SparkConf}\nimport org.apache.spark.sql.{SQLContext, DataFrame}\nimport org.apache.log4j.{Logger, Level}\nimport java.io.File\nlogDir: String \u003d testLog\nres2: Boolean \u003d false\nwconf: org.apache.spark.ml.WahooConfig \u003d org.apache.spark.ml.WahooConfig@607d6feb\njava.lang.NoClassDefFoundError: com/mongodb/casbah/commons/Imports\n\tat java.lang.ClassLoader.defineClass1(Native Method)\n\tat java.lang.ClassLoader.defineClass(ClassLoader.java:760)\n\tat java.security.SecureClassLoader.defineClass(SecureClassLoader.java:142)\n\tat java.net.URLClassLoader.defineClass(URLClassLoader.java:467)\n\tat java.net.URLClassLoader.access$100(URLClassLoader.java:73)\n\tat java.net.URLClassLoader$1.run(URLClassLoader.java:368)\n\tat java.net.URLClassLoader$1.run(URLClassLoader.java:362)\n\tat java.security.AccessController.doPrivileged(Native Method)\n\tat java.net.URLClassLoader.findClass(URLClassLoader.java:361)\n\tat java.lang.ClassLoader.loadClass(ClassLoader.java:424)\n\tat java.lang.ClassLoader.loadClass(ClassLoader.java:357)\n\tat org.apache.spark.ml.ModelDb.\u003cinit\u003e(ModelDB.scala:23)\n\tat org.apache.spark.ml.WahooContext.\u003cinit\u003e(WahooContext.scala:14)\n\tat $iwC$$iwC$$iwC$$iwC$$iwC$$iwC$$iwC$$iwC.\u003cinit\u003e(\u003cconsole\u003e:30)\n\tat $iwC$$iwC$$iwC$$iwC$$iwC$$iwC$$iwC.\u003cinit\u003e(\u003cconsole\u003e:35)\n\tat $iwC$$iwC$$iwC$$iwC$$iwC$$iwC.\u003cinit\u003e(\u003cconsole\u003e:37)\n\tat $iwC$$iwC$$iwC$$iwC$$iwC.\u003cinit\u003e(\u003cconsole\u003e:39)\n\tat $iwC$$iwC$$iwC$$iwC.\u003cinit\u003e(\u003cconsole\u003e:41)\n\tat $iwC$$iwC$$iwC.\u003cinit\u003e(\u003cconsole\u003e:43)\n\tat $iwC$$iwC.\u003cinit\u003e(\u003cconsole\u003e:45)\n\tat $iwC.\u003cinit\u003e(\u003cconsole\u003e:47)\n\tat \u003cinit\u003e(\u003cconsole\u003e:49)\n\tat .\u003cinit\u003e(\u003cconsole\u003e:53)\n\tat .\u003cclinit\u003e(\u003cconsole\u003e)\n\tat .\u003cinit\u003e(\u003cconsole\u003e:7)\n\tat .\u003cclinit\u003e(\u003cconsole\u003e)\n\tat $print(\u003cconsole\u003e)\n\tat sun.reflect.NativeMethodAccessorImpl.invoke0(Native Method)\n\tat sun.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:62)\n\tat sun.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)\n\tat java.lang.reflect.Method.invoke(Method.java:497)\n\tat org.apache.spark.repl.SparkIMain$ReadEvalPrint.call(SparkIMain.scala:1065)\n\tat org.apache.spark.repl.SparkIMain$Request.loadAndRun(SparkIMain.scala:1340)\n\tat org.apache.spark.repl.SparkIMain.loadAndRunReq$1(SparkIMain.scala:840)\n\tat org.apache.spark.repl.SparkIMain.interpret(SparkIMain.scala:871)\n\tat org.apache.spark.repl.SparkIMain.interpret(SparkIMain.scala:819)\n\tat org.apache.zeppelin.spark.SparkInterpreter.interpretInput(SparkInterpreter.java:658)\n\tat org.apache.zeppelin.spark.SparkInterpreter.interpret(SparkInterpreter.java:623)\n\tat org.apache.zeppelin.spark.SparkInterpreter.interpret(SparkInterpreter.java:616)\n\tat org.apache.zeppelin.interpreter.ClassloaderInterpreter.interpret(ClassloaderInterpreter.java:57)\n\tat org.apache.zeppelin.interpreter.LazyOpenInterpreter.interpret(LazyOpenInterpreter.java:93)\n\tat org.apache.zeppelin.interpreter.remote.RemoteInterpreterServer$InterpretJob.jobRun(RemoteInterpreterServer.java:276)\n\tat org.apache.zeppelin.scheduler.Job.run(Job.java:170)\n\tat org.apache.zeppelin.scheduler.FIFOScheduler$1.run(FIFOScheduler.java:118)\n\tat java.util.concurrent.Executors$RunnableAdapter.call(Executors.java:511)\n\tat java.util.concurrent.FutureTask.run(FutureTask.java:266)\n\tat java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.access$201(ScheduledThreadPoolExecutor.java:180)\n\tat java.util.concurrent.ScheduledThreadPoolExecutor$ScheduledFutureTask.run(ScheduledThreadPoolExecutor.java:293)\n\tat java.util.concurrent.ThreadPoolExecutor.runWorker(ThreadPoolExecutor.java:1142)\n\tat java.util.concurrent.ThreadPoolExecutor$Worker.run(ThreadPoolExecutor.java:617)\n\tat java.lang.Thread.run(Thread.java:745)\nCaused by: java.lang.ClassNotFoundException: com.mongodb.casbah.commons.Imports\n\tat java.net.URLClassLoader.findClass(URLClassLoader.java:381)\n\tat java.lang.ClassLoader.loadClass(ClassLoader.java:424)\n\tat java.lang.ClassLoader.loadClass(ClassLoader.java:357)\n\t... 51 more\n\n"
+      },
+      "dateCreated": "Nov 27, 2015 4:23:54 PM",
+      "dateStarted": "Nov 29, 2015 1:46:47 AM",
+      "dateFinished": "Nov 29, 2015 1:46:52 AM",
+      "status": "ERROR",
+      "progressUpdateIntervalMs": 500
+    },
+    {
+      "text": "",
+      "dateUpdated": "Nov 27, 2015 4:38:12 PM",
+      "config": {
+        "colWidth": 12.0,
+        "graph": {
+          "mode": "table",
+          "height": 300.0,
+          "optionOpen": false,
+          "keys": [],
+          "values": [],
+          "groups": [],
+          "scatter": {}
+        }
+      },
+      "settings": {
+        "params": {},
+        "forms": {}
+      },
+      "jobName": "paragraph_1448659566760_1665330995",
+      "id": "20151127-162606_1606046490",
+      "result": {
+        "code": "SUCCESS",
+        "type": "TEXT"
+      },
+      "dateCreated": "Nov 27, 2015 4:26:06 PM",
+      "dateStarted": "Nov 27, 2015 4:38:12 PM",
+      "dateFinished": "Nov 27, 2015 4:38:12 PM",
+      "status": "FINISHED",
+      "progressUpdateIntervalMs": 500
+    }
+  ],
+  "name": "Test",
+  "id": "2B4AN38C4",
+  "angularObjects": {
+    "2B5UPJKYC": [],
+    "2B6AMC7FB": [],
+    "2B67SCAN3": [],
+    "2B4YGP65N": [],
+    "2B4DFK6ZA": [],
+    "2B7F277K5": [],
+    "2B6CKYQSV": [],
+    "2B78TAARK": [],
+    "2B48ND1JA": [],
+    "2B4FW13P1": [],
+    "2B83HK9DN": [],
+    "2B736YGKH": [],
+    "2B58KWK16": []
+  },
+  "config": {},
+  "info": {}
+}
