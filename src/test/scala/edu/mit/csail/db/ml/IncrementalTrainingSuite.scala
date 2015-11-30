@@ -37,26 +37,30 @@ class IncrementalTrainingSuite extends FunSuite with BeforeAndAfter {
       data("year")
     )).withColumn("label", toBinary(data("mpg")))
       .select("features","label")
-      .randomSplit(Array(0.7,0.1,0.2))
+      .randomSplit(Array(0.8,0.2))
 
     val training = allData(0)
-    val incremental = allData(1)
-    val testing = allData(2)
+    val testing = allData(1)
 
     // Train a Wahoo logistic regression model.
     val lr = TestBase.wcontext.createLogisticRegression
-    lr.setMaxIter(30).setRegParam(0.05)
+    lr.setMaxIter(10).setRegParam(0.05)
     val model1 = lr.fit(training)
     val accuracy1 = evalModel(model1, testing)
+    assert(accuracy1 > 0.80) // quality check
 
-    // Add incremental data
-    val model2 = lr.train(model1, training, 5)
+    // Train for more iterations
+    val deltaIterations = 10
+    val model2 = lr.train(model1, testing, deltaIterations)
     val accuracy2 = evalModel(model2, testing)
+    assert(accuracy2 >= accuracy1) // quality check
 
-    println("accuracy 1: " + accuracy1)
-    println("accuracy 2: " + accuracy2)
+    // Compare to model trained with same total number of iterations
+    lr.setMaxIter(20)
+    val model3 = lr.fit(training)
+    val accuracy3 = evalModel(model3, testing)
+    assert(accuracy3 > 0.80) // quality check
   }
-
 
   /**
    * This method evaluates a model on a test data set and outputs both

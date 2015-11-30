@@ -737,29 +737,9 @@ class WahooLogisticRegression(override val uid: String)
       new BreezeOWLQN[Int, BDV[Double]](addedIterations, 10, regParamL1Fun, $(tol))
     }
 
-    // val initialCoefficientsWithIntercept =
-    //   Vectors.zeros(if ($(fitIntercept)) numFeatures + 1 else numFeatures)
     val initialCoefficientsWithIntercept = Vectors.dense(
       if ($(fitIntercept)) oldModel.weights.toArray :+ oldModel.intercept
       else oldModel.weights.toArray)
-
-    if ($(fitIntercept)) {
-      /*
-      For binary logistic regression, when we initialize the coefficients as zeros,
-      it will converge faster if we initialize the intercept such that
-      it follows the distribution of the labels.
-
-      {{{
-        P(0) = 1 / (1 + \exp(b)), and
-        P(1) = \exp(b) / (1 + \exp(b))
-      }}}, hence
-      {{{
-        b = \log{P(1) / P(0)} = \log{count_1 / count_0}
-      }}}
-      */
-     initialCoefficientsWithIntercept.toArray(numFeatures)
-     = math.log(histogram(1) / histogram(0))
-    }
 
     val states = optimizer.iterations(new CachedDiffFunction(costFun),
       initialCoefficientsWithIntercept.toBreeze.toDenseVector)
