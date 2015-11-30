@@ -662,8 +662,7 @@ class WahooLogisticRegression(override val uid: String)
     model
   }
 
-  def addData(oldModel: LogisticRegressionModel, dataset: DataFrame): LogisticRegressionModel = {
-    println("weightCol: " + $(weightCol))
+  def train(oldModel: LogisticRegressionModel, dataset: DataFrame, addedIterations: Int): LogisticRegressionModel = {
     // Extract columns from data.  If dataset is persisted, do not persist oldDataset.
     val w = if ($(weightCol).isEmpty) lit(1.0) else col($(weightCol))
     val instances: RDD[Instance] = dataset.select(col($(labelCol)), w, col($(featuresCol))).map {
@@ -716,7 +715,7 @@ class WahooLogisticRegression(override val uid: String)
       featuresStd, featuresMean, regParamL2)
 
     val optimizer = if ($(elasticNetParam) == 0.0 || $(regParam) == 0.0) {
-      new BreezeLBFGS[BDV[Double]]($(maxIter), 10, $(tol))
+      new BreezeLBFGS[BDV[Double]](addedIterations, 10, $(tol))
     } else {
       def regParamL1Fun = (index: Int) => {
         // Remove the L1 penalization on the intercept
@@ -735,11 +734,14 @@ class WahooLogisticRegression(override val uid: String)
           }
         }
       }
-      new BreezeOWLQN[Int, BDV[Double]]($(maxIter), 10, regParamL1Fun, $(tol))
+      new BreezeOWLQN[Int, BDV[Double]](addedIterations, 10, regParamL1Fun, $(tol))
     }
 
-    val initialCoefficientsWithIntercept =
-      Vectors.zeros(if ($(fitIntercept)) numFeatures + 1 else numFeatures)
+    // val initialCoefficientsWithIntercept =
+    //   Vectors.zeros(if ($(fitIntercept)) numFeatures + 1 else numFeatures)
+    val initialCoefficientsWithIntercept = Vectors.dense(
+      if ($(fitIntercept)) oldModel.weights.toArray :+ oldModel.intercept
+      else oldModel.weights.toArray)
 
     if ($(fitIntercept)) {
       /*
