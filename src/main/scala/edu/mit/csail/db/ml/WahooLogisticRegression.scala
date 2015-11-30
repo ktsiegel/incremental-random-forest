@@ -38,7 +38,7 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.{DataFrame, Row}
 import org.apache.spark.sql.functions.{col, lit}
 import org.apache.spark.storage.StorageLevel
-import org.apache.spark.ml.{HasModelDb, CanCache, LogisticRegressionSpec}
+import org.apache.spark.ml.{HasModelDb, CanCache, LogisticRegressionSpec, WahooContext}
 
 /**
  * Params for logistic regression.
@@ -148,10 +148,10 @@ with HasStandardization with HasWeightCol with HasThreshold {
     checkThresholdConsistency()
   }
 
-  override def toString(): String = {
-    val featureString = features.mkString("[", ", ", "]")
-    s"LogisticRegression(features=$featureString, regParam=$regParam, maxIter=$maxIter)"
-  }
+  // override def toString(): String = {
+  //   val featureString = features.mkString("[", ", ", "]")
+  //   s"LogisticRegression(features=$featureString, regParam=$regParam, maxIter=$maxIter)"
+  // }
 }
 
 /**
@@ -163,42 +163,11 @@ with HasStandardization with HasWeightCol with HasThreshold {
  * It is a smarter logistic regression which caches old models in the model database and looks them up before
  * trying to retrain. Make sure to to call the setDb method to give it a model database.
  */
-<<<<<<< f641e5f2523bb8f10bde4bcaec5287ed215bfafd
-class WahooLogisticRegression(uid: String, wc: WahooContext) extends LogisticRegression(uid)
-with HasModelDb with CanCache[LogisticRegressionModel] {
-  this.setDb(wc.modelDB) // TODO: may go away if we change the cancache traits
-
-  override def train(dataset: DataFrame): LogisticRegressionModel = {
-    wc.log_msg(s"Running model $uid")
-    val ms = modelSpec(dataset).toString
-    wc.log_msg(s"ModelSpec: $ms")
-    val model = super.train(dataset)
-    wc.log_msg(s"Training complete")
-    val summary = model.summary
-    val numIter = summary.totalIterations
-    val objhist = summary.objectiveHistory.mkString("[", ", ", "]")
-    wc.log_msg(s"Objective History: $objhist")
-    wc.log_msg(s"# Iterations: $numIter")
-    wc.log_msg(s"Finished model $uid")
-    model
-  }
-
-  def this(wc: WahooContext) = this(Identifiable.randomUID("logreg"), wc)
-=======
 @Experimental
-class WahooLogisticRegression(override val uid: String)
-  extends ProbabilisticClassifier[Vector, WahooLogisticRegression, LogisticRegressionModel]
+class LogisticRegression(override val uid: String)
+  extends ProbabilisticClassifier[Vector, LogisticRegression, LogisticRegressionModel]
   with LogisticRegressionParams 
-  with DefaultParamsWritable 
-  with Logging
-  with HasModelDb
-  with CanCache[LogisticRegressionModel] {
-
-  def this() = this(Identifiable.randomUID("logreg"))
-
->>>>>>> ported over code to use wahoologisticregression with tons of copied boilerplate
-  override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
-    new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
+  with DefaultParamsWritable {
 
   /**
    * Set the regularization parameter.
@@ -275,6 +244,7 @@ class WahooLogisticRegression(override val uid: String)
   override protected def train(dataset: DataFrame): LogisticRegressionModel = {
     // Extract columns from data.  If dataset is persisted, do not persist oldDataset.
     val w = if ($(weightCol).isEmpty) lit(1.0) else col($(weightCol))
+
     val instances: RDD[Instance] = dataset.select(col($(labelCol)), w, col($(featuresCol))).map {
       case Row(label: Double, weight: Double, features: Vector) =>
         Instance(label, weight, features)
@@ -288,12 +258,12 @@ class WahooLogisticRegression(override val uid: String)
         instance: Instance) =>
         (c._1.add(instance.features, instance.weight), c._2.add(instance.label, instance.weight))
 
-        val combOp = (c1: (MultivariateOnlineSummarizer, MultiClassSummarizer),
-          c2: (MultivariateOnlineSummarizer, MultiClassSummarizer)) =>
-          (c1._1.merge(c2._1), c1._2.merge(c2._2))
+      val combOp = (c1: (MultivariateOnlineSummarizer, MultiClassSummarizer),
+        c2: (MultivariateOnlineSummarizer, MultiClassSummarizer)) =>
+        (c1._1.merge(c2._1), c1._2.merge(c2._2))
 
-          instances.treeAggregate(
-            new MultivariateOnlineSummarizer, new MultiClassSummarizer)(seqOp, combOp)
+      instances.treeAggregate(
+        new MultivariateOnlineSummarizer, new MultiClassSummarizer)(seqOp, combOp)
     }
 
     val histogram = labelSummarizer.histogram
@@ -421,12 +391,281 @@ class WahooLogisticRegression(override val uid: String)
       $(featuresCol),
       objectiveHistory)
     model.setSummary(logRegSummary)
+
+  }
+  override def copy(extra: ParamMap): LogisticRegression = defaultCopy(extra)
+}
+
+/**
+ * :: Experimental ::
+ * Logistic regression.
+ * Currently, this class only supports binary classification.  It will support multiclass
+ * in the future.
+ * 
+ * It is a smarter logistic regression which caches old models in the model database and looks them up before
+ * trying to retrain. Make sure to to call the setDb method to give it a model database.
+ */
+@Experimental
+class WahooLogisticRegression(override val uid: String)
+  extends ProbabilisticClassifier[Vector, WahooLogisticRegression, LogisticRegressionModel]
+  with LogisticRegressionParams 
+  with DefaultParamsWritable 
+  with Logging
+  with HasModelDb
+  with CanCache[LogisticRegressionModel] {
+
+  var wc: WahooContext = _
+
+  def this(wcontext: WahooContext) = {
+    this(Identifiable.randomUID("logreg"))
+    wc = wcontext
+    this.setDb(wc.modelDB)
+  }
+
+  override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
+    new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
+
+  /**
+   * Set the regularization parameter.
+   * Default is 0.0.
+   * @group setParam
+   */
+  def setRegParam(value: Double): this.type = set(regParam, value)
+  setDefault(regParam -> 0.0)
+
+  /**
+   * Set the ElasticNet mixing parameter.
+   * For alpha = 0, the penalty is an L2 penalty. For alpha = 1, it is an L1 penalty.
+   * For 0 < alpha < 1, the penalty is a combination of L1 and L2.
+   * Default is 0.0 which is an L2 penalty.
+   * @group setParam
+   */
+  def setElasticNetParam(value: Double): this.type = set(elasticNetParam, value)
+  setDefault(elasticNetParam -> 0.0)
+
+  /**
+   * Set the maximum number of iterations.
+   * Default is 100.
+   * @group setParam
+   */
+  def setMaxIter(value: Int): this.type = set(maxIter, value)
+  setDefault(maxIter -> 100)
+
+  /**
+   * Set the convergence tolerance of iterations.
+   * Smaller value will lead to higher accuracy with the cost of more iterations.
+   * Default is 1E-6.
+   * @group setParam
+   */
+  def setTol(value: Double): this.type = set(tol, value)
+  setDefault(tol -> 1E-6)
+
+  /**
+   * Whether to fit an intercept term.
+   * Default is true.
+   * @group setParam
+   */
+  def setFitIntercept(value: Boolean): this.type = set(fitIntercept, value)
+  setDefault(fitIntercept -> true)
+
+  /**
+   * Whether to standardize the training features before fitting the model.
+   * The coefficients of models will be always returned on the original scale,
+   * so it will be transparent for users. Note that with/without standardization,
+   * the models should be always converged to the same solution when no regularization
+   * is applied. In R's GLMNET package, the default behavior is true as well.
+   * Default is true.
+   * @group setParam
+   */
+  def setStandardization(value: Boolean): this.type = set(standardization, value)
+  setDefault(standardization -> true)
+
+  override def setThreshold(value: Double): this.type = super.setThreshold(value)
+
+  override def getThreshold: Double = super.getThreshold
+
+  /**
+   * Whether to over-/under-sample training instances according to the given weights in weightCol.
+   * If empty, all instances are treated equally (weight 1.0).
+   * Default is empty, so all instances have weight one.
+   * @group setParam
+   */
+  def setWeightCol(value: String): this.type = set(weightCol, value)
+  setDefault(weightCol -> "")
+
+  override def setThresholds(value: Array[Double]): this.type = super.setThresholds(value)
+
+  override def getThresholds: Array[Double] = super.getThresholds
+
+  override protected def train(dataset: DataFrame): LogisticRegressionModel = {
+    wc.log_msg(s"Running model $uid")
+    val ms = modelSpec(dataset).toString
+    wc.log_msg(s"ModelSpec: $ms")
+
+    // Extract columns from data.  If dataset is persisted, do not persist oldDataset.
+    val w = if ($(weightCol).isEmpty) lit(1.0) else col($(weightCol))
+
+    val instances: RDD[Instance] = dataset.select(col($(labelCol)), w, col($(featuresCol))).map {
+      case Row(label: Double, weight: Double, features: Vector) =>
+        Instance(label, weight, features)
+    }
+
+    val handlePersistence = dataset.rdd.getStorageLevel == StorageLevel.NONE
+    if (handlePersistence) instances.persist(StorageLevel.MEMORY_AND_DISK)
+
+    val (summarizer, labelSummarizer) = {
+      val seqOp = (c: (MultivariateOnlineSummarizer, MultiClassSummarizer),
+        instance: Instance) =>
+        (c._1.add(instance.features, instance.weight), c._2.add(instance.label, instance.weight))
+
+      val combOp = (c1: (MultivariateOnlineSummarizer, MultiClassSummarizer),
+        c2: (MultivariateOnlineSummarizer, MultiClassSummarizer)) =>
+        (c1._1.merge(c2._1), c1._2.merge(c2._2))
+
+      instances.treeAggregate(
+        new MultivariateOnlineSummarizer, new MultiClassSummarizer)(seqOp, combOp)
+    }
+
+    val histogram = labelSummarizer.histogram
+    val numInvalid = labelSummarizer.countInvalid
+    val numClasses = histogram.length
+    val numFeatures = summarizer.mean.size
+
+    if (numInvalid != 0) {
+      val msg = s"Classification labels should be in {0 to ${numClasses - 1} " +
+      s"Found $numInvalid invalid labels."
+      logError(msg)
+      throw new SparkException(msg)
+    }
+
+    if (numClasses > 2) {
+      val msg = s"Currently, LogisticRegression with ElasticNet in ML package only supports " +
+      s"binary classification. Found $numClasses in the input dataset."
+      logError(msg)
+      throw new SparkException(msg)
+    }
+
+    val featuresMean = summarizer.mean.toArray
+    val featuresStd = summarizer.variance.toArray.map(math.sqrt)
+
+    val regParamL1 = $(elasticNetParam) * $(regParam)
+    val regParamL2 = (1.0 - $(elasticNetParam)) * $(regParam)
+
+    val costFun = new LogisticCostFun(instances, numClasses, $(fitIntercept), $(standardization),
+      featuresStd, featuresMean, regParamL2)
+
+    val optimizer = if ($(elasticNetParam) == 0.0 || $(regParam) == 0.0) {
+      new BreezeLBFGS[BDV[Double]]($(maxIter), 10, $(tol))
+    } else {
+      def regParamL1Fun = (index: Int) => {
+        // Remove the L1 penalization on the intercept
+        if (index == numFeatures) {
+          0.0
+        } else {
+          if ($(standardization)) {
+            regParamL1
+          } else {
+            // If `standardization` is false, we still standardize the data
+            // to improve the rate of convergence; as a result, we have to
+            // perform this reverse standardization by penalizing each component
+            // differently to get effectively the same objective function when
+            // the training dataset is not standardized.
+            if (featuresStd(index) != 0.0) regParamL1 / featuresStd(index) else 0.0
+          }
+        }
+      }
+      new BreezeOWLQN[Int, BDV[Double]]($(maxIter), 10, regParamL1Fun, $(tol))
+    }
+
+    val initialCoefficientsWithIntercept =
+      Vectors.zeros(if ($(fitIntercept)) numFeatures + 1 else numFeatures)
+
+    if ($(fitIntercept)) {
+      /*
+      For binary logistic regression, when we initialize the coefficients as zeros,
+      it will converge faster if we initialize the intercept such that
+      it follows the distribution of the labels.
+
+      {{{
+        P(0) = 1 / (1 + \exp(b)), and
+        P(1) = \exp(b) / (1 + \exp(b))
+      }}}, hence
+      {{{
+        b = \log{P(1) / P(0)} = \log{count_1 / count_0}
+      }}}
+      */
+     initialCoefficientsWithIntercept.toArray(numFeatures)
+     = math.log(histogram(1) / histogram(0))
+    }
+
+    val states = optimizer.iterations(new CachedDiffFunction(costFun),
+      initialCoefficientsWithIntercept.toBreeze.toDenseVector)
+
+    val (coefficients, intercept, objectiveHistory) = {
+      /*
+      Note that in Logistic Regression, the objective history (loss + regularization)
+      is log-likelihood which is invariance under feature standardization. As a result,
+      the objective history from optimizer is the same as the one in the original space.
+      */
+      val arrayBuilder = mutable.ArrayBuilder.make[Double]
+      var state: optimizer.State = null
+      while (states.hasNext) {
+        state = states.next()
+        arrayBuilder += state.adjustedValue
+      }
+
+      if (state == null) {
+        val msg = s"${optimizer.getClass.getName} failed."
+        logError(msg)
+        throw new SparkException(msg)
+      }
+
+      /*
+      The coefficients are trained in the scaled space; we're converting them back to
+      the original space.
+      Note that the intercept in scaled space and original space is the same;
+      as a result, no scaling is needed.
+      */
+      val rawCoefficients = state.x.toArray.clone()
+      var i = 0
+      while (i < numFeatures) {
+        rawCoefficients(i) *= { if (featuresStd(i) != 0.0) 1.0 / featuresStd(i) else 0.0 }
+        i += 1
+      }
+
+      if ($(fitIntercept)) {
+        (Vectors.dense(rawCoefficients.dropRight(1)).compressed, rawCoefficients.last,
+          arrayBuilder.result())
+      } else {
+        (Vectors.dense(rawCoefficients).compressed, 0.0, arrayBuilder.result())
+      }
+    }
+
+    if (handlePersistence) instances.unpersist()
+      val model = copyValues(new LogisticRegressionModel(uid, coefficients, intercept))
+
+    val logRegSummary = new BinaryLogisticRegressionTrainingSummary(
+      model.transform(dataset),
+      $(probabilityCol),
+      $(labelCol),
+      $(featuresCol),
+      objectiveHistory)
+    model.setSummary(logRegSummary)
+
+    wc.log_msg(s"Training complete")
+    val summary = model.summary
+    val numIter = summary.totalIterations
+    val objhist = summary.objectiveHistory.mkString("[", ", ", "]")
+    wc.log_msg(s"Objective History: $objhist")
+    wc.log_msg(s"# Iterations: $numIter")
+    wc.log_msg(s"Finished model $uid")
+    model
   }
 
   def addData(oldModel: LogisticRegressionModel, dataset: DataFrame): LogisticRegressionModel = {
     println("weightCol: " + $(weightCol))
     // Extract columns from data.  If dataset is persisted, do not persist oldDataset.
-    // val w = if ($(weightCol).isEmpty) lit(1.0) else col($(weightCol))
+    val w = if ($(weightCol).isEmpty) lit(1.0) else col($(weightCol))
     val instances: RDD[Instance] = dataset.select(col($(labelCol)), w, col($(featuresCol))).map {
       case Row(label: Double, weight: Double, features: Vector) =>
         Instance(label, weight, features)

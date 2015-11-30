@@ -3,7 +3,6 @@ package org.apache.spark.ml
 import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
 import org.apache.spark.mllib.linalg.{Vector, Vectors}
 import org.scalatest.{FunSuite, BeforeAndAfter}
-import org.apache.spark.ml.classification.{LogisticRegression}
 import org.apache.spark.ml.param.{ParamMap, Param, ParamPair}
 import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.spark.ml.util._
