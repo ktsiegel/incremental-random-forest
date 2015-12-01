@@ -242,6 +242,14 @@ class LogisticRegression(override val uid: String)
   override def getThresholds: Array[Double] = super.getThresholds
 
   override protected def train(dataset: DataFrame): LogisticRegressionModel = {
+    val (instances, summarizer, labelSummarizer) = startTrain(dataset)
+    val numFeatures = summarizer.mean.size
+    val initialCoefficientsWithIntercept =
+      Vectors.zeros(if ($(fitIntercept)) numFeatures + 1 else numFeatures)
+    finishTrain(dataset, instances, summarizer, labelSummarizer, initialCoefficientsWithIntercept)
+  }
+
+  def startTrain(dataset: DataFrame): (RDD[Instance], MultivariateOnlineSummarizer, MultiClassSummarizer) = {
     // Extract columns from data.  If dataset is persisted, do not persist oldDataset.
     val w = if ($(weightCol).isEmpty) lit(1.0) else col($(weightCol))
 
@@ -266,6 +274,17 @@ class LogisticRegression(override val uid: String)
         new MultivariateOnlineSummarizer, new MultiClassSummarizer)(seqOp, combOp)
     }
 
+    (instances, summarizer, labelSummarizer)
+  }
+
+  def finishTrain(dataset: DataFrame,
+    instances: RDD[Instance],
+    summarizer: MultivariateOnlineSummarizer,
+    labelSummarizer: MultiClassSummarizer,
+    initialCoefficientsWithIntercept: Vector
+  ): LogisticRegressionModel = {
+
+    val handlePersistence = dataset.rdd.getStorageLevel == StorageLevel.NONE
     val histogram = labelSummarizer.histogram
     val numInvalid = labelSummarizer.countInvalid
     val numClasses = histogram.length
@@ -317,8 +336,6 @@ class LogisticRegression(override val uid: String)
       new BreezeOWLQN[Int, BDV[Double]]($(maxIter), 10, regParamL1Fun, $(tol))
     }
 
-    val initialCoefficientsWithIntercept =
-      Vectors.zeros(if ($(fitIntercept)) numFeatures + 1 else numFeatures)
 
     if ($(fitIntercept)) {
       /*
@@ -391,8 +408,8 @@ class LogisticRegression(override val uid: String)
       $(featuresCol),
       objectiveHistory)
     model.setSummary(logRegSummary)
-
   }
+
   override def copy(extra: ParamMap): LogisticRegression = defaultCopy(extra)
 }
 
