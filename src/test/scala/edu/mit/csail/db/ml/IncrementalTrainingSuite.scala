@@ -11,10 +11,14 @@ import org.apache.spark.ml.classification.{WahooLogisticRegression, LogisticRegr
  * Check whether models are cached in the model database.
  */
 class IncrementalTrainingSuite extends FunSuite with BeforeAndAfter {
+  before {
+    TestBase.wcontext.resetDb
+  }
+
   /**
    * Dataset source: UCI Machine Learning Repository
    */
-  test("incremental data training works") {
+  test("incremental training works") {
     val data = TestBase.sqlContext.read
       .format("com.databricks.spark.csv")
       .option("header","true")
@@ -37,29 +41,40 @@ class IncrementalTrainingSuite extends FunSuite with BeforeAndAfter {
       data("year")
     )).withColumn("label", toBinary(data("mpg")))
       .select("features","label")
-      .randomSplit(Array(0.8,0.2))
+      .randomSplit(Array(0.7,0.1,0.2))
 
     val training = allData(0)
-    val testing = allData(1)
+    val incremental = allData(1)
+    val testing = allData(2)
 
     // Train a Wahoo logistic regression model.
     val lr = TestBase.wcontext.createLogisticRegression
-    lr.setMaxIter(10).setRegParam(0.05)
-    val model1 = lr.fit(training)
-    val accuracy1 = evalModel(model1, testing)
-    assert(accuracy1 > 0.80) // quality check
+    lr.setMaxIter(2).setRegParam(0.05)
+    val model = lr.fit(training)
+    val accuracy = evalModel(model, testing)
+    assert(accuracy > 0.70) // quality check
 
-    // Train for more iterations
-    val deltaIterations = 10
-    val model2 = lr.train(model1, testing, deltaIterations)
-    val accuracy2 = evalModel(model2, testing)
-    assert(accuracy2 >= accuracy1) // quality check
+    // Train for more iterations and compare to previous model
+    lr.setMaxIter(6)
+    val deltaIterations = 4
+    val modelMoreIter = lr.train(model, training, deltaIterations)
+    val accuracyMoreIter = evalModel(modelMoreIter, testing)
+    // Should be more accurate than previous model trained with fewer iterations
+    assert(accuracyMoreIter >= accuracy)
 
     // Compare to model trained with same total number of iterations
-    lr.setMaxIter(20)
-    val model3 = lr.fit(training)
-    val accuracy3 = evalModel(model3, testing)
-    assert(accuracy3 > 0.80) // quality check
+    val modelTotal = lr.fit(training)
+    val accuracyTotal = evalModel(modelTotal, testing)
+    // Should be similarly accurate to other model, because same # total iterations
+    assert(Math.abs(accuracyTotal - accuracyMoreIter) < 0.1)
+
+    // Compare to model trained with less data
+    lr.setMaxIter(2)
+    val trainingAndIncremental: DataFrame = training.unionAll(incremental)
+    val modelMoreData = lr.train(model, trainingAndIncremental, deltaIterations)
+    val accuracyMoreData = evalModel(modelMoreData, testing)
+    // Should be more accurate than previous model trained with less data
+    assert(accuracyMoreData >= accuracy)
   }
 
   /**
