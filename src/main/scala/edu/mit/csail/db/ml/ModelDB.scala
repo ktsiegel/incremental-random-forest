@@ -11,7 +11,7 @@ import java.security.MessageDigest
  * It connects to to localhost
  * // TODO: allow connections to arbitrary servers
  */
-class ModelDb(private val databaseName: String, private val port: Int) {
+class ModelDb(private val databaseName: String, private val port: Int, dropFirst: Boolean = false) {
   /**
    * Set up database connection
    */
@@ -21,7 +21,10 @@ class ModelDb(private val databaseName: String, private val port: Int) {
   // TODO (mvartak): do we need other tables?
 
   val mongoClient = MongoClient("localhost", port)
+  if (dropFirst) mongoClient(databaseName).dropDatabase()
   val modelCollection = mongoClient(databaseName)(modelCollName)
+
+  def dropDatabase = mongoClient(databaseName).dropDatabase()
 
   /**
    * Store this model in the database.
