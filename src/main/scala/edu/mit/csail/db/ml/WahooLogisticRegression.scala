@@ -51,6 +51,14 @@ class WahooLogisticRegression(override val uid: String) extends LogisticRegressi
     model
   }
 
+  /**
+   * Trains a model using a warm start. 
+   * @param oldModel - the trained model that will be trained further
+   * @param dataset - the dataset on which the model will be trained
+   * @param addedIterations - the additional iterations on which the model
+   *                          will be trained
+   * @return a trained model
+   */
   def train(oldModel: LogisticRegressionModel, dataset: DataFrame, addedIterations: Int): LogisticRegressionModel = {
     val (instances, summarizer, labelSummarizer) = super.startTrain(dataset)
     val initialCoefficientsWithIntercept = Vectors.dense(
