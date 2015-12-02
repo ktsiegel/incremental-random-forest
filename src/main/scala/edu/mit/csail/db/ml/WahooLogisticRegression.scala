@@ -1,6 +1,7 @@
 package org.apache.spark.ml
 
-import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel, MultiClassSummarizer, BinaryLogisticRegressionTrainingSummary}
+import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel, MultiClassSummarizer,
+  BinaryLogisticRegressionTrainingSummary, LogisticRegressionTrainingSummary}
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.mllib.linalg.BLAS._
 import org.apache.spark.mllib.regression.LabeledPoint
@@ -77,6 +78,7 @@ class WahooLogisticRegression(uid: String, wc: WahooContext) extends LogisticReg
 with HasModelDb with CanCache[LogisticRegressionModel]
 with MultiThreadTrain[LogisticRegressionModel] {
   this.setDb(wc.modelDB) // TODO: may go away if we change the cancache traits
+  var trainingSummary: Option[LogisticRegressionTrainingSummary] = None
 
   override def train(dataset: DataFrame): LogisticRegressionModel = {
     wc.log_msg(s"Running model $uid")
@@ -203,18 +205,23 @@ with MultiThreadTrain[LogisticRegressionModel] {
         = math.log(histogram(1).toDouble / histogram(0).toDouble)
     }
 
+    val initWeights = optimizers.map(_ => initialWeightsWithIntercept)
+    val fitIntercepts = optimizers.map (_ => $(fitIntercept))
+    val standardizations = optimizers.map(_ => $(standardization))
+
     // MV: FIX. this is the thing shared by all the optimizers
-    val costFunHelper = new MultiLogisticCostFunHelper(instances, numClasses, $(fitIntercept), $(standardization),
-      featuresStd, featuresMean, regParamL2, initWeights)
+    val costFunHelper = new MultiLogisticCostFunHelper(instances, numClasses, optimizers.length,
+      fitIntercepts, standardizations, featuresStd, featuresMean, regParamL2, initWeights)
 
     val histories = Array.ofDim[mutable.ArrayBuilder[Double]](optimizers.length)
 
     val stateIterators = Array.ofDim[Any](optimizers.length) // these are the iterators for each optimizer
     val currState = Array.ofDim[Any](optimizers.length) // current state for each optimizer
 
+    // initialize optimizers with correct cost function
     for ((value, idx) <- optimizers.view.zipWithIndex) {
       stateIterators(idx) = optimizers(idx).iterations(
-        new CachedDiffFunction(new MultiLogisticCostFun(costFunHelper, idx)),
+        new CachedDiffFunction(new MultiLogisticCosFun(costFunHelper, idx)),
         initialWeightsWithIntercept.toBreeze.toDenseVector) // using same init for all optimizers
       histories(idx) = mutable.ArrayBuilder.make[Double]
     }
@@ -276,6 +283,11 @@ with MultiThreadTrain[LogisticRegressionModel] {
     // after all models have been train
     if (handlePersistence) instances.unpersist()
     models
+  }
+
+  def setSummary(summary: LogisticRegressionTrainingSummary): this.type = {
+    super.trainingSummary = Some(summary)
+    this
   }
 }
 
@@ -447,13 +459,9 @@ private class MultiLogisticAggregator(
 }
 
 private class MultiLogisticCosFun(helper: MultiLogisticCostFunHelper, idx: Int) extends DiffFunction[BDV[Double]] {
-  var iteration = 0
   override def calculate(weights: BDV[Double]): (Double, BDV[Double]) = {
-    val tmp = helper.calculate(weights, idx, iteration)
-    iteration += 1
-    tmp
+    helper.calculate(weights, idx)
   }
-
 }
 
 /**
@@ -471,21 +479,19 @@ private class MultiLogisticCostFunHelper(
                                featuresStd: Array[Double],
                                featuresMean: Array[Double],
                                regParamsL2: Array[Double],
-                               weightArray: Array[Vector]) { // this the initial values of weights
-  var helperIteration = -1
+                               var weightArray: Array[Vector]) { // this the initial values of weights
   var multiLogisticAggregator: MultiLogisticAggregator = null
-  val weightArrayNext: Array[Vector]
+  var weightArrayNext: Array[Vector] = weightArray
 
   def update(idx: Int, value: Vector): Unit = {
     weightArrayNext(idx) = value
   }
 
-  def calculate(weights: BDV[Double], idx: Int, iteration: Int): (Double, BDV[Double]) = {
+  def calculate(weights: BDV[Double], idx: Int): (Double, BDV[Double]) = {
     val numFeatures = featuresStd.length
-    weightArray(idx) = Vectors.fromBreeze(weights)
 
-    if (helperIteration < iteration) {
-      weightArray = weightArrayNext
+    if (idx == 0) { // start of new iteration, need to recompute aggregate
+      weightArray = weightArrayNext.clone()
       // compute new value
       multiLogisticAggregator = data.treeAggregate(new MultiLogisticAggregator(
         numModels, numFeatures, weightArray, numClasses, fitIntercepts, featuresStd, featuresMean))(
@@ -495,14 +501,11 @@ private class MultiLogisticCostFunHelper(
         combOp = (c1, c2) => (c1, c2) match {
           case (aggregator1, aggregator2) => aggregator1.merge(aggregator2)
         })
-      helperIteration += 1
     }
-
 
     val totalGradientArray = multiLogisticAggregator.gradient(idx).toArray
 
     // regVal is the sum of weight squares excluding intercept for L2 regularization.
-
     val w = weightArray(idx)
     val regVal = if (regParamsL2(idx) == 0.0) {
       0.0

@@ -53,4 +53,11 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
   def createLinearRegression: WahooLinearRegression = {
     new WahooLinearRegression(this)
   }
+
+  // new API we want to expose
+
+  // specify the set of models that you want to train
+
+  // e.g. various models with logistic regression
+
 }
