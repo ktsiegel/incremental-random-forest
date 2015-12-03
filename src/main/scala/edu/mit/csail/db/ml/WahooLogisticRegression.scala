@@ -60,11 +60,12 @@ class WahooLogisticRegression(override val uid: String) extends LogisticRegressi
    * @return a trained model
    */
   def train(oldModel: LogisticRegressionModel, dataset: DataFrame, addedIterations: Int): LogisticRegressionModel = {
-    val (instances, summarizer, labelSummarizer) = super.startTrain(dataset)
-    val initialCoefficientsWithIntercept = Vectors.dense(
+    val instances = getInstances(dataset)
+    val (summarizer, labelSummarizer) = getSummarizers(instances)
+    val initialCoefficients = Vectors.dense(
       if ($(fitIntercept)) oldModel.weights.toArray :+ oldModel.intercept
       else oldModel.weights.toArray)
-    super.finishTrain(dataset, instances, summarizer, labelSummarizer, initialCoefficientsWithIntercept)
+    runRegression(dataset, instances, summarizer, labelSummarizer, initialCoefficients)
   }
 }
 

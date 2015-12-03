@@ -242,14 +242,15 @@ class LogisticRegression(override val uid: String)
   override def getThresholds: Array[Double] = super.getThresholds
 
   override protected def train(dataset: DataFrame): LogisticRegressionModel = {
-    val (instances, summarizer, labelSummarizer) = startTrain(dataset)
+    val instances = getInstances(dataset)
+    val (summarizer, labelSummarizer) = getSummarizers(instances)
     val numFeatures = summarizer.mean.size
-    val initialCoefficientsWithIntercept =
+    val initialCoefficients =
       Vectors.zeros(if ($(fitIntercept)) numFeatures + 1 else numFeatures)
-    finishTrain(dataset, instances, summarizer, labelSummarizer, initialCoefficientsWithIntercept)
+    runRegression(dataset, instances, summarizer, labelSummarizer, initialCoefficients)
   }
 
-  def startTrain(dataset: DataFrame): (RDD[Instance], MultivariateOnlineSummarizer, MultiClassSummarizer) = {
+  def getInstances(dataset: DataFrame): RDD[Instance] = {
     // Extract columns from data.  If dataset is persisted, do not persist oldDataset.
     val w = if ($(weightCol).isEmpty) lit(1.0) else col($(weightCol))
 
@@ -261,23 +262,23 @@ class LogisticRegression(override val uid: String)
     val handlePersistence = dataset.rdd.getStorageLevel == StorageLevel.NONE
     if (handlePersistence) instances.persist(StorageLevel.MEMORY_AND_DISK)
 
-    val (summarizer, labelSummarizer) = {
-      val seqOp = (c: (MultivariateOnlineSummarizer, MultiClassSummarizer),
-        instance: Instance) =>
-        (c._1.add(instance.features, instance.weight), c._2.add(instance.label, instance.weight))
-
-      val combOp = (c1: (MultivariateOnlineSummarizer, MultiClassSummarizer),
-        c2: (MultivariateOnlineSummarizer, MultiClassSummarizer)) =>
-        (c1._1.merge(c2._1), c1._2.merge(c2._2))
-
-      instances.treeAggregate(
-        new MultivariateOnlineSummarizer, new MultiClassSummarizer)(seqOp, combOp)
-    }
-
-    (instances, summarizer, labelSummarizer)
+    instances
   }
 
-  def finishTrain(dataset: DataFrame,
+  def getSummarizers(instances: RDD[Instance]): (MultivariateOnlineSummarizer, MultiClassSummarizer) = {
+    val seqOp = (c: (MultivariateOnlineSummarizer, MultiClassSummarizer),
+      instance: Instance) =>
+      (c._1.add(instance.features, instance.weight), c._2.add(instance.label, instance.weight))
+
+    val combOp = (c1: (MultivariateOnlineSummarizer, MultiClassSummarizer),
+      c2: (MultivariateOnlineSummarizer, MultiClassSummarizer)) =>
+      (c1._1.merge(c2._1), c1._2.merge(c2._2))
+
+    instances.treeAggregate(
+      new MultivariateOnlineSummarizer, new MultiClassSummarizer)(seqOp, combOp)
+  }
+
+  def runRegression(dataset: DataFrame,
     instances: RDD[Instance],
     summarizer: MultivariateOnlineSummarizer,
     labelSummarizer: MultiClassSummarizer,
