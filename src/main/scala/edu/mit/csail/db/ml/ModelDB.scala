@@ -37,6 +37,13 @@ class ModelDb(private val databaseName: String, private val port: Int) {
     val res = modelCollection.insert( modelObj, WriteConcern.SAFE)
   }
 
+  def cache[M <: Model[M]](spec: ModelSpec[M], model: M, data: WahooDataFrame): Unit = {
+    val modelObj: MongoDBObject = spec.toDBObject(model)
+    // TODO dataframe may not be stored in same table, to allow for folds.
+    modelObj += "dataframe" -> data.uid
+    val res = modelCollection.insert( modelObj, WriteConcern.SAFE)
+  }
+
   /**
    * Deterministic hashing function for a DataFrame.
    * @param dataset - The DataFrame for which we are generating the hash.
@@ -64,6 +71,17 @@ class ModelDb(private val databaseName: String, private val port: Int) {
     }
   }
 
+  def get[M <: Model[M]](spec: ModelSpec[M], data: WahooDataFrame): M = {
+    val modelQuery = spec.toDBQuery()
+    modelQuery += "dataframe" -> data.uid
+    modelCollection.findOne(modelQuery) match {
+      case Some(modelInfo) => {
+        return spec.generateModel(new DBObjectHelper(modelInfo))
+      }
+      case None => return null.asInstanceOf[M]
+    }
+  }
+
   /**
    * Fetch the model with the given specification, or execute a function to generate a model if the
    * result is not found.
@@ -75,6 +93,12 @@ class ModelDb(private val databaseName: String, private val port: Int) {
    */
   def getOrElse[M <: Model[M]](spec: ModelSpec[M], dataset: DataFrame)(orElse: ()=> M): M = {
     val model = get[M](spec, dataset)
+    if (model != None && model.isInstanceOf[Model[M]])
+      model.asInstanceOf[M] else orElse()
+  }
+
+  def getOrElse[M <: Model[M]](spec: ModelSpec[M], data: WahooDataFrame)(orElse: ()=> M): M = {
+    val model = get[M](spec, data)
     if (model != None && model.isInstanceOf[Model[M]])
       model.asInstanceOf[M] else orElse()
   }
@@ -126,6 +150,19 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
         })
       case None =>
         super.fit(dataset)
+    }
+  }
+
+  def fit(data: WahooDataFrame): M = {
+    super.getDb match {
+      case Some(db) =>
+        db.getOrElse[M](modelSpec(data.dataset), data)(() => {
+          val model = super.fit(data.dataset)
+          db.cache[M](modelSpec(data.dataset), model, data) // TODO: this function signature is weird
+          model
+        })
+      case None =>
+        super.fit(data.dataset)
     }
   }
 
