@@ -62,7 +62,8 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
  * trying to retrain. Make sure to to call the setDb method to give it a model database.
  */
 class WahooLogisticRegression(uid: String, wc: WahooContext) extends LogisticRegression(uid)
-with HasModelDb with CanCache[LogisticRegressionModel] {
+with HasModelDb with CanCache[LogisticRegressionModel]
+with MultiThreadTrain[LogisticRegressionModel] {
   this.setDb(wc.modelDB) // TODO: may go away if we change the cancache traits
 
   override def train(dataset: DataFrame): LogisticRegressionModel = {
