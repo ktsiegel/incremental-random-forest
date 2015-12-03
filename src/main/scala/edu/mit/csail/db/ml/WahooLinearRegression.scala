@@ -59,7 +59,7 @@ class LinearRegressionSpec(override val features: Array[String], val regParam: D
  * trying to retrain. Make sure to to call the setDb method to give it a model database.
  */
 class WahooLinearRegression(uid: String, wc: WahooContext) extends LinearRegression(uid)
-with HasModelDb with CanCache[LinearRegressionModel] {
+with HasModelDb with CanCache[LinearRegressionModel] with MultiThreadTrain[LinearRegressionModel] {
   this.setDb(wc.modelDB) // TODO: this may disappear if we change the CanCache traits
 
   def this(wc: WahooContext) = this(Identifiable.randomUID("linreg"), wc)
