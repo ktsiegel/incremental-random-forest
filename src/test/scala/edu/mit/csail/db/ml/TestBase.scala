@@ -15,7 +15,7 @@ object TestBase {
   Logger.getLogger("breeze").setLevel(Level.OFF)
 
   // Make the log directory, if it doesn't already exist.
-  var logDir = "testLog"
+  private val logDir = "testLog"
   new File(logDir).mkdir()
 
   // Set up Spark.
@@ -27,8 +27,26 @@ object TestBase {
   val sc = new SparkContext(conf)
   val sqlContext = SQLContext.getOrCreate(sc)
 
-  // TODO: this could be specified per test suite. Ok for now
-  val wconf = new WahooConfig().setDbName("wahootest")
-  val wcontext = new WahooContext(sc, wconf)
-  wcontext.resetDb
+  /**
+    * Execute the given function with a new WahooContext. The name of the database used by the
+    * WahooContext is given by dbName.
+    * @param dbName - Name of the database
+    * @param fn - Function to execute with the WahooContext
+    */
+  def withContext(dbName: String)(fn: WahooContext => Unit): Unit = {
+    val wconf = new WahooConfig().setDbName(dbName).setDropFirst(true)
+    val wcontext = new WahooContext(sc, wconf)
+
+    fn(wcontext)
+    wcontext.dropDb
+  }
+
+  /**
+    * Execute the given function with a new WahooContext.
+    * @param fn - The function to execute.
+    */
+  def withContext(fn: WahooContext => Unit): Unit = {
+    val dbName = "test" + java.util.UUID.randomUUID().toString
+    withContext(dbName)(fn)
+  }
 }

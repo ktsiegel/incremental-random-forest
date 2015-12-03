@@ -13,12 +13,15 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
   // set up modelDB
   var modelDB = new ModelDb(
     wc.get(WahooConfig.WahooDbName, WahooConfig.WahooDefaultDbName),
-    wc.getInt(WahooConfig.WahooDbPort, WahooConfig.WahooDefaultDbPort)
+    wc.getInt(WahooConfig.WahooDbPort, WahooConfig.WahooDefaultDbPort),
+    wc.getBool(WahooConfig.WahooDropFirst, WahooConfig.WahooDefaultDropFirst)
   )
 
-  // test methods
-  def resetDb: Unit = {
-    modelDB.clear()
+  /**
+    * Delete the entire database.
+    */
+  def dropDb: Unit = {
+    modelDB.dropDatabase
   }
 
   /**

@@ -13,6 +13,11 @@ class WahooConfig () {
   import WahooConfig._
   private val settings = new ConcurrentHashMap[String, String]()
 
+  /**
+    * Set parameter indicating whether the ModelDB should drop its existing model
+    * database before allowing interaction.
+    */
+  def setDropFirst(dropFirst: Boolean) = set(WahooDropFirst, dropFirst.toString)
   def setDbName(dbName: String) = set(WahooDbName, dbName)
   def setDbPort(dbPort: String) = set(WahooDbPort, dbPort)
   def setUiPort(uiPort: String) = set(WahooUiPort, uiPort)
@@ -51,6 +56,11 @@ class WahooConfig () {
     getOption(key).map(_.toInt).getOrElse(defaultValue)
   }
 
+  /** Get a parameter as a boolean, falling back to a default if not set */
+  def getBool(key: String, defaultValue: Boolean): Boolean = {
+    getOption(key).map(_.toBoolean).getOrElse(defaultValue)
+  }
+
   // TODO: implement parameterized get and rename to getOrElse
   //def get[T <: AnyVal](key: String, default: T): T = {
   //
@@ -60,6 +70,8 @@ class WahooConfig () {
 
 // TODO: is this the best way to specify default?
 object WahooConfig {
+  val WahooDropFirst = "wahoo.dropFirst"
+  val WahooDefaultDropFirst = false
   val WahooNodeJsName = "wahoo.nodejs"
   val WahooDbName = "wahoo.dbName"
   val WahooDefaultDbName = "wahooDb"
