@@ -1,4 +1,4 @@
-name := "ML Project"
+name := "ML_Project"
 
 version := "1.0"
 

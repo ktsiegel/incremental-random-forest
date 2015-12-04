@@ -1,5 +1,6 @@
 <h3>Models</h3>
 <div class="container">
+  <small>
   <table class="table table-striped row">
     <thead>
       <tr class="row">
@@ -12,7 +13,7 @@
     </thead>
 	<tbody>
 	  <% models.forEach(function(model) { %>
-	  <tr class="row">
+	  <tr class="row" id="<%= model.uid%>">
 	    <td class="col-sm-2"><%= model.uid %></td>
 		  <td class="col-sm-3">
         <% model.weights.forEach(function(weight) { %>
@@ -32,4 +33,5 @@
 	  <% }); %>
     </tbody>
   </table>
+  </small>
 </div>
