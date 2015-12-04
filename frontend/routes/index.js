@@ -5,9 +5,16 @@ var runLogs = require("../models/runLogs")
 
 var modelUtils = require('../models/modelUtils');
 
-// Welcome page
+// Welcome Page
+// TODO: turn index.html into a 'Session Log-In' page after multi-user development starts
 router.get('/', function(req, res, next) {
-  res.render('index', {});
+  //res.render('index', {});
+  modelUtils.findAll(function(err, allModels) {
+    if (err) { res.status(500).send(); }
+    else {
+      res.render('models', { models: allModels });
+    }
+  });
 });
 
 // Receive log message from Spark WahooConnector
@@ -17,17 +24,18 @@ router.post('/', function(req, res, next) {
   res.send("received!");
 });
 
-// See all models in the DB
-router.get('/models', function(req, res, next) {
+// Models Page - (see all models in the DB)
+// TODO: re-instate this route after multi-user development starts
+/*router.get('/models', function(req, res, next) {
   modelUtils.findAll(function(err, allModels) {
     if (err) { res.status(500).send(); }
     else {
       res.render('models', { models: allModels });
     }
   });
-});
+});*/
 
-// See the logs for all job runs
+// Runs Page - (see the logs for all job runs)
 router.get('/runs', function(req, res, next) {
   res.render('runs', {"runLogs": runLogs});
 });
