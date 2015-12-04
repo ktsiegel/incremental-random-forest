@@ -1,6 +1,8 @@
 package org.apache.spark.ml
 
 import org.apache.spark.SparkContext
+import org.apache.spark.ml.classification.WahooLogisticRegression
+
 import scalaj.http.Http
 
 /**

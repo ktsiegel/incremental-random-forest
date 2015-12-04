@@ -20,3 +20,6 @@ testLog/
 # Ignore node files
 node_modules/
 npm-debug.log
+
+# Ignore notebook jars. Remove at some point
+local-repo/
