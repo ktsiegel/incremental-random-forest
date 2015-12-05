@@ -109,16 +109,3 @@ class WahooLogisticRegressionSuite extends FunSuite with BeforeAndAfter {
     pos/count
   }
 }
-
-// TODO (mvartak)
-class MultiLogisticAggregatorSuite extends FunSuite {
-  test("test that logistic aggregator functions as before given only a single model") {
-
-  }
-
-  test("test that logistic aggregator functions correctly with two models") {
-
-  }
-
-  test ("test that logistic aggregator functions correctly with ten models")
-}

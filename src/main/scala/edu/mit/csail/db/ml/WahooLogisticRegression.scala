@@ -100,11 +100,34 @@ with MultiThreadTrain[LogisticRegressionModel] {
     new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
 
 
-  // MV: pass in model specs to train
-  protected def train(
-                       dataset: DataFrame,
-                       elasticNetParams: Array[Double],
-                       regParams: Array[Double]): Array[LogisticRegressionModel] = {
+  // TODO MV: pass in model specs to train
+  // TODO: should this be a trait?
+  def fitMulti(
+      dataset: DataFrame,
+      paramMapArray: Array[ParamMap]): Array[LogisticRegressionModel] = {
+
+    val numModels = paramMapArray.length
+    // extract params from the paramMapArray
+    val elasticNetParams = Array.ofDim[Double](numModels)
+    val regParams = Array.ofDim[Double](numModels)
+    val maxIters = Array.ofDim[Double](numModels)
+    val tols = Array.ofDim[Double](numModels)
+    val standardizations = Array.ofDim[Boolean](numModels)
+    val fitIntercepts = Array.ofDim[Boolean](numModels)
+
+    println("Length of paramArray: " + paramMapArray.length)
+    // TODO: this is so crummy...
+    for (i <- paramMapArray.indices) {
+      val pm = this.extractParamMap(paramMapArray(i))
+      elasticNetParams(i) = pm.get(this.elasticNetParam).get
+      regParams(i) = pm.get(this.regParam).get
+      maxIters(i) = pm.get(this.maxIter).get
+      tols(i) = pm.get(this.tol).get
+      standardizations(i) = pm.get(this.standardization).get
+      fitIntercepts(i) = pm.get(this.fitIntercept).get
+    }
+    // TEST: make sure I get the right params
+
     // Extract columns from data.  If dataset is persisted, do not persist oldDataset.
     val instances = extractLabeledPoints(dataset).map {
       case LabeledPoint(label: Double, features: Vector) => (label, features)
@@ -149,15 +172,15 @@ with MultiThreadTrain[LogisticRegressionModel] {
     val featuresStd = summarizer.variance.toArray.map(math.sqrt)
 
     // MV: this can be multiple things
-    val regParamL1 = Array[Double](elasticNetParams.length)
-    val regParamL2 = Array[Double](elasticNetParams.length)
+    val regParamL1 = Array.ofDim[Double](elasticNetParams.length)
+    val regParamL2 = Array.ofDim[Double](elasticNetParams.length)
 
     for ((value, idx) <- regParamL1.view.zipWithIndex) {
       regParamL1(idx) = elasticNetParams(idx) * regParams(idx)
       regParamL2(idx) = (1 - elasticNetParams(idx)) * regParams(idx)
     }
 
-    // MV: create multiple optimizers
+    // ok to claim type as LBFGS, OWLQN is a subclass
     val optimizers = Array.ofDim[BreezeLBFGS[BDV[Double]]](elasticNetParams.length)
     for ((value, idx) <- regParamL1.view.zipWithIndex) {
       optimizers(idx) = if (elasticNetParams(idx) == 0.0 || regParams(idx) == 0.0) {
@@ -168,7 +191,7 @@ with MultiThreadTrain[LogisticRegressionModel] {
           if (index == numFeatures) {
             0.0
           } else {
-            if ($(standardization)) { // use across all models
+            if (standardizations(idx)) { // use across all models
               regParamL1(idx)
             } else {
               // If `standardization` is false, we still standardize the data
@@ -184,42 +207,28 @@ with MultiThreadTrain[LogisticRegressionModel] {
       }
     }
 
-    val initialWeightsWithIntercept =
-      Vectors.zeros(if ($(fitIntercept)) numFeatures + 1 else numFeatures) //TODO: fit intercept assumed to be same
-
-    if ($(fitIntercept)) {
-      /*
-         For binary logistic regression, when we initialize the weights as zeros,
-         it will converge faster if we initialize the intercept such that
-         it follows the distribution of the labels.
-
-         {{{
-         P(0) = 1 / (1 + \exp(b)), and
-         P(1) = \exp(b) / (1 + \exp(b))
-         }}}, hence
-         {{{
-         b = \log{P(1) / P(0)} = \log{count_1 / count_0}
-         }}}
-       */
-      initialWeightsWithIntercept.toArray(numFeatures)
-        = math.log(histogram(1).toDouble / histogram(0).toDouble)
+    // MV: make sure this makes sense
+    val initWeights = for (i <- optimizers.indices) yield {
+      if (fitIntercepts(i)) {
+        val tmp = Vectors.zeros(numFeatures + 1) // MV: is this correct?
+        tmp.toArray(numFeatures) = math.log(histogram(1).toDouble / histogram(0).toDouble)
+        tmp
+      } else {
+        Vectors.zeros(numFeatures)
+      }
     }
 
-    val initWeights = optimizers.map(_ => initialWeightsWithIntercept)
-    val fitIntercepts = optimizers.map (_ => $(fitIntercept))
-    val standardizations = optimizers.map(_ => $(standardization))
-
-    // MV: this is the thing shared by all the optimizers
-    val costFunHelper = new MultiLogisticCostFunHelper(instances, numClasses, optimizers.length,
-      fitIntercepts, standardizations, featuresStd, featuresMean, regParamL2, initWeights)
+    // the helper will be shared by all cost functions
+    val costFunHelper = new MultiLogisticCostFunHelper(optimizers.length,instances, numClasses,
+      fitIntercepts, standardizations, featuresStd, featuresMean, regParamL2, initWeights.toArray)
 
     val stateIterators = for (i <- optimizers.indices) yield optimizers(i).iterations(
       new CachedDiffFunction(new MultiLogisticCosFun(costFunHelper, i)),
-      initialWeightsWithIntercept.toBreeze.toDenseVector)
+      initWeights(i).toBreeze.toDenseVector)
 
     val histories = optimizers.map(_ => mutable.ArrayBuilder.make[Double])
 
-    val currState = Array[Any](optimizers.length) // current state for each optimizer
+    val currState = Array.ofDim[Any](optimizers.length) // current state for each optimizer
 
     // TODO: optimize for when only updating one or the other
     val keepIterating = optimizers.map(_ => true)
@@ -260,15 +269,13 @@ with MultiThreadTrain[LogisticRegressionModel] {
 //          case _ => null
 //        }
 
-
-
         var i = 0
         while (i < numFeatures) {
           rawWeights(i) *= { if (featuresStd(i) != 0.0) 1.0 / featuresStd(i) else 0.0 }
           i += 1
         }
 
-        if ($(fitIntercept)) {
+        if (fitIntercepts(idx)) {
           (Vectors.dense(rawWeights.dropRight(1)).compressed, rawWeights.last, histories(idx).result())
         } else {
           (Vectors.dense(rawWeights).compressed, 0.0, histories(idx).result())
@@ -279,8 +286,8 @@ with MultiThreadTrain[LogisticRegressionModel] {
 
       val logRegSummary = new BinaryLogisticRegressionTrainingSummary(
         models(idx).transform(dataset),
-        $(probabilityCol),
-        $(labelCol),
+        $(probabilityCol), // we use these as is
+        $(labelCol), // same as above
         objectiveHistory)
       models(idx).setSummary(logRegSummary)
     }
@@ -292,6 +299,7 @@ with MultiThreadTrain[LogisticRegressionModel] {
 
 /**
  * Multiple aggregator version of LogisticAggregator.
+ *
  * Computes the gradient and loss for binary logistic loss function, as used
  * in binary classification for samples in sparse or dense vector in a online fashion.
  *
@@ -318,10 +326,10 @@ private class MultiLogisticAggregator(
                                   featuresStd: Array[Double], // only one because all features present in df
                                   featuresMean: Array[Double]) extends Serializable {
 
-  private val dim = dimension; //hack. number of columns in the data
+  private val dim = dimension; //TODO: fix hack. number of columns in the data
 
   private var totalCnt: Long = 0L //number of records we have seen so far
-  private val lossSums: Array[Double] = Array[Double](numModels) // the values of loss for all models
+  private val lossSums: Array[Double] = Array.ofDim[Double](numModels) // the values of loss for all models
 
   private val weightArrays = weights.map(weight => weight match { // array of weights for various models
       case dv: DenseVector => dv.values
@@ -356,7 +364,7 @@ private class MultiLogisticAggregator(
         // For Binary Logistic Regression.
         // TODO: probably not scala-esque yet. when rewriting note that we want to process each data
         // tuple only once and update all models at the same time
-        val sums = Array[Double](numModels)
+        val sums = Array.ofDim[Double](numModels)
         data.foreachActive { (index, value) =>
           // go through the weight vectors
           if (featuresStd(index) != 0.0 && value != 0.0) {
@@ -457,52 +465,70 @@ private class MultiLogisticAggregator(
   }
 }
 
-private class MultiLogisticCosFun(helper: MultiLogisticCostFunHelper, idx: Int) extends DiffFunction[BDV[Double]] {
+/**
+ * This class calculates the cost function for logistic regression.
+ * It implements optimizations for when multiple models are being trained,
+ * hence the name
+ * @param helper Helper class that does the heavy lifting
+ * @param idx Index of the model being trained
+ */
+private class MultiLogisticCosFun(helper: MultiLogisticCostFunHelper, idx: Int)
+  extends DiffFunction[BDV[Double]] {
   override def calculate(weights: BDV[Double]): (Double, BDV[Double]) = {
     helper.calculate(weights, idx)
   }
 }
 
 /**
- * LogisticCostFun implements Breeze's DiffFunction[T] for a multinomial logistic loss function,
- * as used in multi-class classification (it is also used in binary logistic regression).
- * It returns the loss and gradient with L2 regularization at a particular point (weights).
- * It's used in Breeze's convex optimization routines.
+ * MultiLogisticCostFunHelper is a cost function helper shared by all cost functions used in
+ * multi-model training
+ *
+ * The calculate function is called repeatedly by the breeze optimizer to get the loss
+ * and the gradientArray
+ *
+ * Works as follows, for each iteration:
+ * - The first time the calculate function is called, it uses the multiLogisticAggregator to
+ * compute gradients and losses, and caches them (internally in aggregator)
+ * - on a subsequent call, the pre-computed gradients and losses are just reused
+ * - in either case, the new weights are stored in weightArrayNext
  */
+
+// TODO: why is L1 not supported?
 private class MultiLogisticCostFunHelper(
-                               data: RDD[(Double, Vector)],
-                               numClasses: Int,
-                               numModels: Int,
-                               fitIntercepts: Array[Boolean],
-                               standardizations: Array[Boolean], // MV: ok?
-                               featuresStd: Array[Double],
-                               featuresMean: Array[Double],
-                               regParamsL2: Array[Double],
-                               var weightArrayCurr: Array[Vector]) { // this the initial values of weights
-  var multiLogisticAggregator: MultiLogisticAggregator = null
+     numModels: Int,
+     data: RDD[(Double, Vector)],
+     numClasses: Int,
+     fitIntercepts: Array[Boolean],
+     standardizations: Array[Boolean],
+     featuresStd: Array[Double],
+     featuresMean: Array[Double],
+     regParamsL2: Array[Double],
+     var weightArrayCurr: Array[Vector]) { // this the initial values of weights
+  var multiLogisticAggregator: MultiLogisticAggregator = null // aggregator used to compute loss
   var weightArrayNext = weightArrayCurr.map(w => w.toBreeze.toDenseVector)
 
+  // store the new weight values returned by the optimization routine (breeze)
   def update(idx: Int, value: BDV[Double]): Unit = {
     weightArrayNext(idx) = value
   }
 
-  def calculate(weights: BDV[Double], idx: Int): (Double, BDV[Double]) = {
+  // called by the breeze optimizer to get the loss and gradient array
+  def calculate(weights: BDV[Double], idx: Int /* model Idx */): (Double, BDV[Double]) = {
     val numFeatures = featuresStd.length
 
     if (idx == 0) { // start of new iteration, need to recompute aggregate
       weightArrayCurr = weightArrayNext.map(w => Vectors.fromBreeze(w)) // turn to spark vector
       // compute new value
-      multiLogisticAggregator = data.treeAggregate(new MultiLogisticAggregator(
-        numModels, numFeatures, weightArrayCurr, numClasses, fitIntercepts, featuresStd, featuresMean))(
-        seqOp = (c, v) => (c, v) match {
-          case (aggregator, (label, features)) => aggregator.add(label, features)
-        },
-        combOp = (c1, c2) => (c1, c2) match {
-          case (aggregator1, aggregator2) => aggregator1.merge(aggregator2)
-        })
-    }
+      multiLogisticAggregator = data.treeAggregate(new MultiLogisticAggregator(numModels,
+        numFeatures, weightArrayCurr, numClasses, fitIntercepts, featuresStd, featuresMean))(
+          seqOp = (c, v) => (c, v) match {
+            case (aggregator, (label, features)) => aggregator.add(label, features)
+          },
+          combOp = (c1, c2) => (c1, c2) match {
+            case (aggregator1, aggregator2) => aggregator1.merge(aggregator2)
+          })}
 
-    val totalGradientArray = multiLogisticAggregator.gradient(idx).toArray // MV: this can be cached
+    val totalGradientArray = multiLogisticAggregator.gradient(idx).toArray // TODO: this can be cached
 
     // regVal is the sum of weight squares excluding intercept for L2 regularization.
     val w = weightArrayCurr(idx)
@@ -513,7 +539,7 @@ private class MultiLogisticCostFunHelper(
       w.foreachActive { (index, value) =>
         // If `fitIntercept` is true, the last term which is intercept doesn't
         // contribute to the regularization.
-        if (index != numFeatures) {
+        if (index != numFeatures) { // TODO: what if fitIntercept false?
           // The following code will compute the loss of the regularization; also
           // the gradient of the regularization, and add back to totalGradientArray.
           sum += {
@@ -543,3 +569,5 @@ private class MultiLogisticCostFunHelper(
     (multiLogisticAggregator.loss(idx) + regVal, new BDV(totalGradientArray))
   }
 }
+
+// TODO: [MV] [IMP] double check if the formulas are correct
