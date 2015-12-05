@@ -75,7 +75,7 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
  */
 class WahooLogisticRegression(uid: String, wc: WahooContext) extends LogisticRegression(uid)
 with HasModelDb with CanCache[LogisticRegressionModel]
-with MultiThreadTrain[LogisticRegressionModel] {
+{
   this.setDb(wc.modelDB) // TODO: may go away if we change the cancache traits
   var trainingSummary: Option[LogisticRegressionTrainingSummary] = None
 
@@ -96,6 +96,11 @@ with MultiThreadTrain[LogisticRegressionModel] {
 
   def this(wc: WahooContext) = this(Identifiable.randomUID("logreg"), wc)
 
+  override def copy(extra: ParamMap): WahooLogisticRegression = {
+    val wlr = new WahooLogisticRegression(wc)
+    copyValues(wlr, extra)
+  }
+
   override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
     new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
 
@@ -115,7 +120,6 @@ with MultiThreadTrain[LogisticRegressionModel] {
     val standardizations = Array.ofDim[Boolean](numModels)
     val fitIntercepts = Array.ofDim[Boolean](numModels)
 
-    println("Length of paramArray: " + paramMapArray.length)
     // TODO: this is so crummy...
     for (i <- paramMapArray.indices) {
       val pm = this.extractParamMap(paramMapArray(i))
@@ -125,6 +129,7 @@ with MultiThreadTrain[LogisticRegressionModel] {
       tols(i) = pm.get(this.tol).get
       standardizations(i) = pm.get(this.standardization).get
       fitIntercepts(i) = pm.get(this.fitIntercept).get
+      println(pm.toString())
     }
     // TEST: make sure I get the right params
 

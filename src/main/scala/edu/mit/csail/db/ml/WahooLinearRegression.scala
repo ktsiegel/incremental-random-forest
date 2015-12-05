@@ -1,5 +1,6 @@
 package org.apache.spark.ml
 
+import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.regression.{LinearRegression, LinearRegressionModel}
 import org.apache.spark.ml.util.Identifiable
 import org.apache.spark.sql.DataFrame
@@ -66,4 +67,9 @@ with HasModelDb with CanCache[LinearRegressionModel] with MultiThreadTrain[Linea
   //println("uid: " + this.uid)
   override def modelSpec(dataset: DataFrame): LinearRegressionSpec =
     new LinearRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
+
+  override def copy(extra: ParamMap): WahooLinearRegression = {
+    val wlr = new WahooLinearRegression(wc)
+    copyValues(wlr, extra)
+  }
 }
