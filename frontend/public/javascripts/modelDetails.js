@@ -21,6 +21,8 @@ var cur_row = "";                                   // UID of Model being traine
 var dets = createDetails();                         // DOM Element - details
 var socket = io.connect('http://localhost:3000');   // socket.io
 
+google.load('visualization', '1', {packages:['corechart']});
+
 
 // Functions
 // ----------------------------------------------------------------------------
@@ -139,6 +141,16 @@ function renderDetailsImage(uid) {
     if (lossData == null) {
         return ( $('<img src=\"http://www.clipartbest.com/cliparts/RiA/6Lx/RiA6LxxLT.png\">') );
     }
+    else {
+        return renderGoogleChart(uid, lossData);
+    }
+}
+
+/*
+    This function renders a Google Chart scatter plot given loss data.
+*/
+function renderGoogleChart(uid, loss) {
+    
 }
 
 /* This function displays details about a clicked model. */
@@ -204,7 +216,7 @@ function updateStatus(uid, state) {
 // ----------------------------------------------------------------------------
 /* handles page loads */
 $(document).ready( function() {
-	// make each row of table appear clickable
+    // make each row of table appear clickable
 	$('.row').css("cursor", "pointer");
 	
 	// add on click event handler - toggles detail view
