@@ -6,40 +6,20 @@ const COL_INDEX_PARAMS = 3;
 const COL_INDEX_STATUS = 4;
 const NUM_COLS = 6;
 
+
 // -- Variables --
-var cur_row = "";
+/* 
+    TODO: The code as written is rather hack and relies on the following
+        assumption - models are trained one at a time. Thus, log messages
+        for a particular model are received consecutively for that model,
+        and, then, never again.
 
-// -- DOM Elements ---
-// Element - details
-var dets = $('<tr>', {'class': 'row details'});
-
-// Element - blurb
-// TODO: replace this with meaningful information
-var detsBlurb = $('<p></p>');
-detsBlurb.append("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
-
-// Element - button
-var detsButton = $(' <button type=\"button\">More Details</button> ');
-
-// Element - image
-// TODO: replace this with a Google Charts of the model training history loss vs. iterations 
-var detsImage = $('<img src=\"http://www.clipartbest.com/cliparts/RiA/6Lx/RiA6LxxLT.png\">');
-
-// arrange DOM elements as desired
-var detsContent = [];
-for (var i = 0; i < 2; i++) {
-	detsContent.push( $('<td>', {'class': 'col-sm-2'}) );
-}
-
-detsContent[0].append(detsImage);
-detsContent[1].append(detsBlurb);
-detsContent[1].append(detsButton);
-dets.append(detsContent[0]);
-dets.append(detsContent[1]);
-
-
-// -- Socket IO --
-var socket = io.connect('http://localhost:3000');
+        In the future, the log messages should be changed to so that they
+        contain the uid of the model they reference.
+*/
+var cur_row = "";                                   // UID of Model being trained
+var dets = createDetails();                         // DOM Element - details
+var socket = io.connect('http://localhost:3000');   // socket.io
 
 
 // Functions
@@ -94,6 +74,52 @@ function addRow(uid, state) {
     $('tbody').append(tr);
 }
 
+/*
+    This function creates the details element.
+*/
+function createDetails() {
+    var details = $('<tr>', {'class': 'row details'});
+    
+    // create image
+    // TODO: replace this with a Google Charts of the model training history loss vs. iterations 
+    var detsImage = $('<img>', {'src': 'http://www.clipartbest.com/cliparts/RiA/6Lx/RiA6LxxLT.png'});
+    var detsImageContainer = $('<div>', {'class': 'det-img'})
+    detsImageContainer.append(detsImage);
+    
+    // create blurb
+    // TODO: replace this with meaningful information
+    var detsBlurb = $('<p>');                       // Element - blurb
+    detsBlurb.text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
+    
+    // create button
+    var detsButton = $('<button>', {'type': 'button'});
+    detsButton.text('More Details');
+    
+    // arrange DOM elements as desired
+    var detsContent = [];
+    for (var i = 0; i < 2; i++) {
+    	detsContent.push( $('<td>', {'class': 'col-sm-2'}) );
+    }
+    
+    detsContent[0].append(detsImageContainer);
+    detsContent[1].append(detsBlurb);
+    detsContent[1].append(detsButton);
+    details.append(detsContent[0]);
+    details.append(detsContent[1]);
+    
+    return details;
+}
+
+/*
+    This function retrieves loss vs. iteration data from the row element
+    corresponding to the given id (if it exists).
+    @param uid - unique identifier of model
+*/
+function getLossData(uid) {
+    var row = $('.row #' + uid);
+    return jQuery.data(row, 'loss');
+}
+
 /* This function hides details about a clicked model. */
 function hideModel() {
 	var id = $(this).attr('id');
@@ -104,6 +130,17 @@ function hideModel() {
 	}
 }
 
+/* 
+    This function renders an image for the details element. 
+    @param uid - unique identifier of model
+*/
+function renderDetailsImage(uid) {
+    var lossData = getLossData(uid);
+    if (lossData == null) {
+        return ( $('<img src=\"http://www.clipartbest.com/cliparts/RiA/6Lx/RiA6LxxLT.png\">') );
+    }
+}
+
 /* This function displays details about a clicked model. */
 function showModel() {
 	var id = $(this).attr('id');
@@ -112,6 +149,17 @@ function showModel() {
 		$(row_id).css({"background-color": "yellow"});
 		$(row_id).after(dets);
 	}
+}
+
+/* 
+    This function stores loss vs. iteration data on the row element corresponding 
+    to the given id.
+    @param uid - unique identifier of model
+    @param loss - array of loss values
+*/
+function storeLossData(uid, loss) {
+    var row = $('.row #' + uid);
+    jQuery.data(row, 'loss', loss);
 }
 
 /*
@@ -190,6 +238,13 @@ socket.on('message', function(data) {
     if (message.search("ModelSpec") > -1) {
         var csv = message.split(":");  // colon-separated values
         updateModelSpec(cur_row, csv[2].trim());
+    }
+    
+    // store data from messages containing loss vs. iteration data
+    if (message.search("Objective History") > -1) {
+        var data = message.substring(message.search(/\[/), message.length);
+        var loss = JSON.parse(data);
+        storeLossData(cur_row, loss);
     }
 });
 // ----------------------------------------------------------------------------
