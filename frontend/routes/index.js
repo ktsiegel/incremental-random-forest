@@ -12,7 +12,7 @@ router.get('/', function(req, res, next) {
   modelUtils.findAll(function(err, allModels) {
     if (err) { res.status(500).send(); }
     else {
-      res.render('models', { models: allModels });
+      res.render('models', { models: allModels, "runLogs": runLogs });
     }
   });
 });
