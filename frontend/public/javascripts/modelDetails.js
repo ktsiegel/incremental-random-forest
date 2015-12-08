@@ -18,10 +18,11 @@ const NUM_COLS = 6;
         contain the uid of the model they reference.
 */
 var cur_row = "";                                   // UID of Model being trained
-var dets = createDetails();                         // DOM Element - details
-var socket = io.connect('http://localhost:3000');   // socket.io
 
-google.load('visualization', '1', {packages:['corechart']});
+// DOM Elements                             
+var dets = createDetails();                         
+
+var socket = io.connect('http://localhost:3000');   // socket.io
 
 
 // Functions
@@ -31,7 +32,7 @@ google.load('visualization', '1', {packages:['corechart']});
     @param uid - unique identifier of model
     @param stats - status of model
  */
-function addRow(uid, state) {
+function addModel(uid, state) {
     // build row element
     var tr = $('<tr>', {'class': 'row', 'id': uid})
     for (var i = 0; i < NUM_COLS; i++) {
@@ -118,28 +119,28 @@ function createDetails() {
     @param uid - unique identifier of model
 */
 function getLossData(uid) {
-    var row = $('.row #' + uid);
-    return jQuery.data(row, 'loss');
+    return $('.row#' + uid).data('loss');
 }
 
 /* This function hides details about a clicked model. */
 function hideModel() {
 	var id = $(this).attr('id');
 	if (typeof id != 'undefined') {
-		var row_id = '.row #' + id; 
+		var row_id = '.row#' + id; 
 		$(row_id).css({"background-color": "red"});
-		$(row_id).closest("tbody").find(".row.details").detach();
+		$(row_id).closest("tbody").find(".row.details").remove();
 	}
 }
 
 /* 
     This function renders an image for the details element. 
     @param uid - unique identifier of model
+    @return a jQuery object containing the image to be displayed in the details element
 */
 function renderDetailsImage(uid) {
     var lossData = getLossData(uid);
     if (lossData == null) {
-        return ( $('<img src=\"http://www.clipartbest.com/cliparts/RiA/6Lx/RiA6LxxLT.png\">') );
+        return ( $('<img src=\"http://images.clipartpanda.com/smiley-face-star-clipart-RTdbbxLT9.gif\">') );
     }
     else {
         return renderGoogleChart(uid, lossData);
@@ -148,17 +149,37 @@ function renderDetailsImage(uid) {
 
 /*
     This function renders a Google Chart scatter plot given loss data.
+    @return a jQuery object containing the Google Chart
 */
 function renderGoogleChart(uid, loss) {
+    var chart_el = $('<div>', {'id': ('chart-' + uid), 'style': 'width:400; height:300'});
     
+    // create data table
+    var data = new google.visualization.DataTable();
+    data.addColumn('number', 'Iteration');
+    data.addColumn('number', 'Loss');
+    for(var i =0; i < loss.length; i++) {
+        data.addRow( [i, loss[i]] );
+    }
+    
+    // set chart options
+    var options = {'title': 'Loss vs. Iterations', 'width': 400, 'height': 300};
+    
+    // draw chart
+    chart = new google.visualization.ScatterChart(chart_el[0]); // script halts at this line
+    chart.draw(data, options);
+    
+    return chart_el;
 }
 
 /* This function displays details about a clicked model. */
 function showModel() {
 	var id = $(this).attr('id');
 	if (typeof id != 'undefined') {
-		var row_id = '.row #' + id;
-		$(row_id).css({"background-color": "yellow"});
+        updateDetsImage(renderDetailsImage(id));
+        
+		var row_id = '.row#' + id;
+		$(row_id).css({"background-color": "yellow"});  // TODO: remove for production
 		$(row_id).after(dets);
 	}
 }
@@ -170,8 +191,14 @@ function showModel() {
     @param loss - array of loss values
 */
 function storeLossData(uid, loss) {
-    var row = $('.row #' + uid);
-    jQuery.data(row, 'loss', loss);
+    $('.row#' + uid).data('loss', loss);
+}
+
+/*
+    This function updates the details element with the provided jQuery object.
+*/
+function updateDetsImage(img) {
+    dets.find('.det-img:first-child').children(':first').replaceWith(img);
 }
 
 /*
@@ -212,24 +239,26 @@ function updateStatus(uid, state) {
 // ----------------------------------------------------------------------------
 
 
-// Event Handlers
+// Script
 // ----------------------------------------------------------------------------
-/* handles page loads */
+google.load('visualization', '1', {packages:['corechart']});
+
+/* event handler - handles page loads */
 $(document).ready( function() {
     // make each row of table appear clickable
 	$('.row').css("cursor", "pointer");
 	
 	// add on click event handler - toggles detail view
-	$('.row').toggle( showModel, hideModel);
+	$('.row').toggle(showModel, hideModel);
 });
 
-/* handles socket connections */
+/* evend handler - handles socket connections */
 socket.on('connection', function (data) {
     console.log("Socket connected.");
     socket.emit('ack', { status: 'Success!' });
 });
 
-/* handles socket messages */
+/* event handler - handles socket messages */
 socket.on('message', function(data) {
 	var message = data.message.trim();
     
@@ -237,7 +266,7 @@ socket.on('message', function(data) {
 	if (message.search("Running") > -1) {
         var ssv = message.split(" ");  // space-separated values
         cur_row = ssv[3];
-        addRow(cur_row, ssv[1]);	
+        addModel(cur_row, ssv[1]);	
 	}
     
     // change status field of appropriate row to "Finished"
