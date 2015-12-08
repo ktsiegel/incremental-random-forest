@@ -33,10 +33,11 @@ class ModelDb(private val databaseName: String, private val port: Int, dropFirst
    * @param model - The model to store with the given key.
    * @tparam M - The type of the model being stored. For example, LogisticRegressionModel.
    */
-  def cache[M <: Model[M]](spec: ModelSpec[M], model: M, dataset: DataFrame): Unit = {
+  def cache[M <: Model[M]](spec: ModelSpec[M], model: M, dataset: DataFrame, log: WahooLog): Unit = {
     val modelObj: MongoDBObject = spec.toDBObject(model)
     // TODO dataframe may not be stored in same table, to allow for folds.
-    modelObj += "dataframe" -> hashDataFrame(dataset)
+    modelObj += ("dataframe" -> hashDataFrame(dataset))
+    modelObj += ("log" -> log.toDBObject())
     val res = modelCollection.insert( modelObj, WriteConcern.SAFE)
   }
 
@@ -106,6 +107,8 @@ trait HasModelDb {
  * @tparam M - The type of the model. For example, LogisticRegressionModel.
  */
 trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
+  var modelLogs: Map[String, WahooLog] = Map()
+
   /**
    * Generate a ModelSpec given the dataset.
    * @param dataset - The dataset.
@@ -124,7 +127,7 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
       case Some(db) =>
         db.getOrElse[M](modelSpec(dataset), dataset)(() => {
           val model = super.fit(dataset)
-          db.cache[M](modelSpec(dataset), model, dataset) // TODO: this function signature is weird
+          db.cache[M](modelSpec(dataset), model, dataset, this.modelLogs(model.uid)) // TODO: this function signature is weird
           model
         })
       case None =>
@@ -139,7 +142,7 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
         var fromCache = true
         val model = db.getOrElse[M](modelSpec(dataset), dataset)(() => {
           val model = super.fit(dataset)
-          db.cache[M](modelSpec(dataset), model, dataset)
+          db.cache[M](modelSpec(dataset), model, dataset, this.modelLogs(model.uid))
           fromCache = false
           model
         })
