@@ -53,7 +53,7 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
       "maxIter" -> maxIter
     ))
     
-  def toJSON(): String = {
+  override def toJSON(): String = {
     val featureString = features.mkString("[\"", "\", \"", "\"]")
     var sb = new StringBuilder
     sb ++= "{"
@@ -79,6 +79,11 @@ with HasModelDb with CanCache[LogisticRegressionModel]
 with MultiThreadTrain[LogisticRegressionModel] {
   this.setDb(wc.modelDB) // TODO: may go away if we change the cancache traits
 
+  def this(wc: WahooContext) = this(Identifiable.randomUID("logreg"), wc)
+  
+  override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
+    new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
+    
   override def train(dataset: DataFrame): LogisticRegressionModel = {
     wc.logMessage("{\"uid\": \"" + uid + "\", \"status\": \"Running\"}", "status")
     wc.logMessage("{\"uid\": \"" + uid + "\", \"modelSpec\": " + modelSpec(dataset).toJSON + "}", "modelSpec")
@@ -89,8 +94,5 @@ with MultiThreadTrain[LogisticRegressionModel] {
     wc.logMessage("{\"uid\": \"" + uid + "\", \"status\": \"Finished\"}", "status")
     model
   }
-
-  def this(wc: WahooContext) = this(Identifiable.randomUID("logreg"), wc)
-  override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
-    new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
+ 
 }

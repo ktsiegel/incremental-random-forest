@@ -10,7 +10,9 @@ var modelUtils = require('../models/modelUtils');
 router.get('/', function(req, res, next) {
   //res.render('index', {});
   modelUtils.findAll(function(err, allModels) {
-    if (err) { res.status(500).send(); }
+    if (err) { 
+        res.status(500).send();
+    }
     else {
       res.render('models', { models: allModels, "runLogs": runLogs });
     }
@@ -22,6 +24,18 @@ router.post('/', function(req, res, next) {
   runLogs.push(req.body);
   io.emit('message', req.body);
   res.send("received!");
+});
+
+// Details Page - (see the logs for all job runs)
+router.get('/details', function(req, res, next) {
+    modelUtils.findAll(function(err, allModels) {
+        if (err) {
+            res.status(500).send();
+        }
+        else {
+            res.render('details', { models: allModels });
+        }
+    });
 });
 
 // Models Page - (see all models in the DB)

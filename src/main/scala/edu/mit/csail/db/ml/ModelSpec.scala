@@ -42,6 +42,13 @@ abstract class ModelSpec[M <: Model[M]](val features: Array[String]) {
    * @return a MongoDB object storing information about this ModelSpec.
    */
   def toDBQuery(): MongoDBObject
+  
+  /**
+   * Creates a JSON string corresponding to a ModelSpec.
+   * Used to transmit data to the UI.
+   * @return a JSON string representing this ModelSpec.
+   */
+  def toJSON(): String
 
   /**
    * Generates a Model object from JSON data stored in a MongoDB object.
