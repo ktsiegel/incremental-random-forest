@@ -8,10 +8,17 @@ class WahooLog(wc: WahooContext) {
   val uuid = java.util.UUID.randomUUID.toString
   val messages: ArrayBuffer[String] = new ArrayBuffer[String]()
 
-  def addMessage(message: String) = {
+  def addMessage(msg: String, msgType:String) = {
+    // construct message
+    val appId = wc.sc.applicationId
+    val message = "{\"appId\": \"" + appId + "\", \"msg\": " + msg + ", \"msgType\": \"" + msgType + "\" }"
+    
+    // add message to log
     messages += message
-    wc.log_msg(message)
+    
+    // send message to Node
+    wc.logMessage(message)
   }
 
-  def toDBObject(): MongoDBObject = DBObject("uid" -> uid, "messages" -> messages)
+  def toDBObject(): MongoDBObject = DBObject("uid" -> uuid, "messages" -> messages)
 }

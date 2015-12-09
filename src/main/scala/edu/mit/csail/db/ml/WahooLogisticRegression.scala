@@ -63,11 +63,6 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
     sb ++= "}"
     sb.toString
   } 
-
-  override def toString(): String = {
-    val featureString = features.mkString("[", ", ", "]")
-    s"LogisticRegression(features=$featureString, regParam=$regParam, maxIter=$maxIter)"
-  }
 }
 
 /**
@@ -85,13 +80,15 @@ with MultiThreadTrain[LogisticRegressionModel] {
     new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
     
   override def train(dataset: DataFrame): LogisticRegressionModel = {
-    wc.logMessage("{\"uid\": \"" + uid + "\", \"status\": \"Running\"}", "status")
-    wc.logMessage("{\"uid\": \"" + uid + "\", \"modelSpec\": " + modelSpec(dataset).toJSON + "}", "modelSpec")
+    val log = new WahooLog(wc)
+    log.addMessage("{\"uid\": \"" + uid + "\", \"status\": \"Running\"}", "status")
+    log.addMessage("{\"uid\": \"" + uid + "\", \"modelSpec\": " + modelSpec(dataset).toJSON + "}", "modelSpec")
     val model = super.train(dataset)
     val summary = model.summary
     val objhist = summary.objectiveHistory.mkString("[", ", ", "]")
-    wc.logMessage("{\"uid\": \"" + uid + "\", \"lossData\": " + objhist + "}", "lossData")
-    wc.logMessage("{\"uid\": \"" + uid + "\", \"status\": \"Finished\"}", "status")
+    log.addMessage("{\"uid\": \"" + uid + "\", \"lossData\": " + objhist + "}", "lossData")
+    log.addMessage("{\"uid\": \"" + uid + "\", \"status\": \"Finished\"}", "status")
+    this.modelLogs += (model.uid -> log)
     model
   }
  

@@ -9,7 +9,7 @@ import scalaj.http.Http
  *
  * @param sc SparkContext to be used by Wahoo to execute jobs
  */
-class WahooContext (sc: SparkContext, var wc: WahooConfig) {
+class WahooContext (val sc: SparkContext, var wc: WahooConfig) {
   // set up modelDB
   var modelDB = new ModelDb(
     wc.get(WahooConfig.WahooDbName, WahooConfig.WahooDefaultDbName),
@@ -39,9 +39,8 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
    * Formats log message before it will be sent to the central Node.js server.
    * @param msg The message passed by the Spark job.
    */
-  def logMessage(msg: String, msgType: String) = {
-    val appId = sc.applicationId
-    log( Seq("message" -> ("{\"appId\": \"" + appId + "\", \"msg\": " + msg + ", \"msgType\": \"" + msgType + "\" }")) )
+  def logMessage(msg: String) = {
+    log( Seq("message" -> msg) )
   }
 
   // factory methods
