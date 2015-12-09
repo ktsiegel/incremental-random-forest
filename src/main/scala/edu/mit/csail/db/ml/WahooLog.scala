@@ -13,5 +13,5 @@ class WahooLog(wc: WahooContext) {
     wc.log_msg(message)
   }
 
-  def toDBObject(): MongoDBObject = DBObject("uid" -> uid, "messages" -> messages)
+  def toDBObject(): MongoDBObject = DBObject("uid" -> uuid, "messages" -> messages)
 }
