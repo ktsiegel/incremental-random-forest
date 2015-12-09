@@ -39,9 +39,9 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
    * Formats log message before it will be sent to the central Node.js server.
    * @param msg The message passed by the Spark job.
    */
-  def log_msg(msg: String) = {
+  def logMessage(msg: String, msgType: String) = {
     val appId = sc.applicationId
-    log(Seq("message" -> s"$appId: $msg"))
+    log( Seq("message" -> ("{\"appId\": \"" + appId + "\", \"msg\": " + msg + ", \"msgType\": \"" + msgType + "\" }")) )
   }
 
   // factory methods

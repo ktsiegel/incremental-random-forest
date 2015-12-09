@@ -7,21 +7,8 @@ const COL_INDEX_STATUS = 4;
 const NUM_COLS = 6;
 
 
-// -- Variables --
-/* 
-    TODO: The code as written is rather hack and relies on the following
-        assumption - models are trained one at a time. Thus, log messages
-        for a particular model are received consecutively for that model,
-        and, then, never again.
-
-        In the future, the log messages should be changed to so that they
-        contain the uid of the model they reference.
-*/
-var cur_row = "";                                   // UID of Model being trained
-
-// DOM Elements                             
+// -- Variables --                          
 var dets = createDetails();                         
-
 var socket = io.connect('http://localhost:3000');   // socket.io
 
 
@@ -207,26 +194,15 @@ function updateDetsImage(img) {
     @param spec - model specification
 */
 function updateModelSpec(uid, spec) {
-    var psv = spec.split('(');          // parenthesis-separated values
+    $('#type-' + uid).find('.replace').text(spec.specType);                 // update type field
+    $('#features-' + uid).find('.replace').text(spec.features.join());      // update features field
     
-    // update type field
-    var type = psv[0] + "Model";
-    $('#type-' + uid).find('.replace').text(type);
-    
-    // transform the 2nd element of psv into a more malleable form
-    var params = psv[1].slice(0, psv[1].length - 1);    // remove trailing ')'
-    params = params.replace(/ /g, '');                  // remove all spaces
-    
-    // update features field
-    var features = params.substring(params.search(/\[/) + 1, params.search(/\]/));
-    $('#features-' + uid).find('.replace').text(features);
-    
-    // update params field
-    params = params.replace(/=/g, ':');
-    var csv = params.split(',');
-    var parameters = csv[2] + '\n' + csv[3];
-    $('#params-' + uid).find('.replace').text(parameters);
+    // update parameters field
+    var paramsEl = $('#params-' + uid).find('.replace');
+    paramsEl.text(spec.parameters.join('\n'));
+    paramsEl.html(paramsEl.html().replace(/\n/g,'<br/>'));
 }
+
 
 /*
     This function updates a row in the Model page's table of models with the given status
@@ -260,32 +236,33 @@ socket.on('connection', function (data) {
 
 /* event handler - handles socket messages */
 socket.on('message', function(data) {
-	var message = data.message.trim();
-    
-    // change status field of appropriate row to "Running"
-	if (message.search("Running") > -1) {
-        var ssv = message.split(" ");  // space-separated values
-        cur_row = ssv[3];
-        addModel(cur_row, ssv[1]);	
-	}
-    
-    // change status field of appropriate row to "Finished"
-    if (message.search("Finished") > -1) {
-        var ssv = message.split(" ");  // space-separated values
-        updateStatus(cur_row, ssv[1]);
+    try {
+        var message = JSON.parse(data.message);
+        
+        // handle lossData messages
+        if(message.msgType == "lossData") {
+            storeLossData(message.msg.uid, message.msg.lossData);
+        }
+        
+        // handle modelSpec messages
+        if(message.msgType == "modelSpec") {
+            updateModelSpec(message.msg.uid, message.msg.modelSpec);
+        }
+        
+        // handle status messages
+        if(message.msgType == "status") {
+            var status = message.msg.status;
+            if(status == "Running") {
+                addModel(message.msg.uid, message.msg.status);
+            }
+            else {
+                updateStatus(message.msg.uid, message.msg.status);
+            }
+        }
     }
     
-    // change type, features, and param fields to appropriate values
-    if (message.search("ModelSpec") > -1) {
-        var csv = message.split(":");  // colon-separated values
-        updateModelSpec(cur_row, csv[2].trim());
-    }
-    
-    // store data from messages containing loss vs. iteration data
-    if (message.search("Objective History") > -1) {
-        var data = message.substring(message.search(/\[/), message.length);
-        var loss = JSON.parse(data);
-        storeLossData(cur_row, loss);
+    catch (err) {
+        alert(err.message);
     }
 });
 // ----------------------------------------------------------------------------
