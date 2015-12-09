@@ -8,15 +8,15 @@ var modelUtils = require('../models/modelUtils');
 // Welcome Page
 // TODO: turn index.html into a 'Session Log-In' page after multi-user development starts
 router.get('/', function(req, res, next) {
-  //res.render('index', {});
-  modelUtils.findAll(function(err, allModels) {
-    if (err) { 
-        res.status(500).send();
-    }
-    else {
-      res.render('models', { models: allModels, "runLogs": runLogs });
-    }
-  });
+    //res.render('index', {});
+    modelUtils.findAll(function(err, allModels) {
+        if (err) { 
+            res.status(500).send();
+        }
+        else {
+            res.render('models', { models: allModels, "runLogs": runLogs });
+        }
+    });
 });
 
 // Receive log message from Spark WahooConnector
@@ -27,27 +27,30 @@ router.post('/', function(req, res, next) {
 });
 
 // Details Page - (see the logs for all job runs)
-router.get('/details*', function(req, res, next) {
+router.get('/models/:uid', function(req, res, next) {
     modelUtils.findAll(function(err, allModels) {
         if (err) {
             res.status(500).send();
         }
         else {
-            res.render('details', { models: allModels, 'test': req.query.test });
+            res.render('details', { models: allModels, 'uid': req.params.uid });
         }
     });
 });
 
 // Models Page - (see all models in the DB)
 // TODO: re-instate this route after multi-user development starts
-/*router.get('/models', function(req, res, next) {
-  modelUtils.findAll(function(err, allModels) {
-    if (err) { res.status(500).send(); }
-    else {
-      res.render('models', { models: allModels });
-    }
-  });
-});*/
+router.get('/models', function(req, res, next) {
+    //res.render('index', {});
+    modelUtils.findAll(function(err, allModels) {
+        if (err) { 
+            res.status(500).send();
+        }
+        else {
+            res.render('models', { models: allModels, "runLogs": runLogs });
+        }
+    });
+});
 
 // Runs Page - (see the logs for all job runs)
 router.get('/runs', function(req, res, next) {
