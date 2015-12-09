@@ -27,13 +27,13 @@ router.post('/', function(req, res, next) {
 });
 
 // Details Page - (see the logs for all job runs)
-router.get('/details', function(req, res, next) {
+router.get('/details*', function(req, res, next) {
     modelUtils.findAll(function(err, allModels) {
         if (err) {
             res.status(500).send();
         }
         else {
-            res.render('details', { models: allModels });
+            res.render('details', { models: allModels, 'test': req.query.test });
         }
     });
 });

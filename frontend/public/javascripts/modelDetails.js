@@ -85,6 +85,7 @@ function createDetails() {
     var detsButton = $('<button>', {'type': 'button'});
     detsButton.text('More Details');
     detsButton.on('click', function() {
+        jQuery.get('details', { 'test': 'test' });
         window.location = 'details';
     });
     
