@@ -72,18 +72,21 @@ function createDetails() {
     
     // create image
     // TODO: replace this with a Google Charts of the model training history loss vs. iterations 
-    var detsImage = $('<img>', {'src': 'http://www.clipartbest.com/cliparts/RiA/6Lx/RiA6LxxLT.png'});
+    var detsImage = $('<img>', {'src': 'https://upload.wikimedia.org/wikipedia/commons/1/16/Acanthocybium_solandri.png'});
     var detsImageContainer = $('<div>', {'class': 'det-img'})
     detsImageContainer.append(detsImage);
     
     // create blurb
     // TODO: replace this with meaningful information
     var detsBlurb = $('<p>');                       // Element - blurb
-    detsBlurb.text("Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.");
+    detsBlurb.text("UNDER CONSTRUCTION: In the not-so-distant future, data that persists across sessions will display here.");
     
     // create button
     var detsButton = $('<button>', {'type': 'button'});
     detsButton.text('More Details');
+    detsButton.on('click', function() {
+        window.location = 'details';
+    });
     
     // arrange DOM elements as desired
     var detsContent = [];
@@ -114,7 +117,7 @@ function hideModel() {
 	var id = $(this).attr('id');
 	if (typeof id != 'undefined') {
 		var row_id = '.row#' + id; 
-		$(row_id).css({"background-color": "red"});
+		//$(row_id).css({"background-color": "red"});
 		$(row_id).closest("tbody").find(".row.details").remove();
 	}
 }
@@ -127,7 +130,7 @@ function hideModel() {
 function renderDetailsImage(uid) {
     var lossData = getLossData(uid);
     if (lossData == null) {
-        return ( $('<img src=\"http://images.clipartpanda.com/smiley-face-star-clipart-RTdbbxLT9.gif\">') );
+        return ( $('<img src=\"https://upload.wikimedia.org/wikipedia/commons/1/16/Acanthocybium_solandri.png\">') );
     }
     else {
         return renderGoogleChart(uid, lossData);
@@ -166,7 +169,7 @@ function showModel() {
         updateDetsImage(renderDetailsImage(id));
         
 		var row_id = '.row#' + id;
-		$(row_id).css({"background-color": "yellow"});  // TODO: remove for production
+		//$(row_id).css({"background-color": "yellow"});  // TODO: remove for production
 		$(row_id).after(dets);
 	}
 }

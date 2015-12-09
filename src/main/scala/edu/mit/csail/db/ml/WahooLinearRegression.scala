@@ -45,6 +45,17 @@ class LinearRegressionSpec(override val features: Array[String], val regParam: D
       "regParam" -> regParam,
       "maxIter" -> maxIter
     ))
+    
+  override def toJSON(): String = {
+    val featureString = features.mkString("[\"", "\", \"", "\"]")
+    var sb = new StringBuilder
+    sb ++= "{"
+    sb ++= "\"specType\": \"LinearRegressionModel\","
+    sb ++= "\"features\": " + featureString + ","
+    sb ++= "\"parameters\": [\"regParam: " + regParam + "\", \"maxIter: " + maxIter + "\"]"
+    sb ++= "}"
+    sb.toString
+  } 
 
   override def generateModel(dbObject: DBObjectHelper): LinearRegressionModel = {
     new LinearRegressionModel(dbObject.asString("uid"),
@@ -63,7 +74,18 @@ with HasModelDb with CanCache[LinearRegressionModel] {
   this.setDb(wc.modelDB) // TODO: this may disappear if we change the CanCache traits
 
   def this(wc: WahooContext) = this(Identifiable.randomUID("linreg"), wc)
-  //println("uid: " + this.uid)
+ 
   override def modelSpec(dataset: DataFrame): LinearRegressionSpec =
     new LinearRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
+    
+  override def train(dataset: DataFrame): LinearRegressionModel = {
+    wc.logMessage("{\"uid\": \"" + uid + "\", \"status\": \"Running\"}", "status")
+    wc.logMessage("{\"uid\": \"" + uid + "\", \"modelSpec\": " + modelSpec(dataset).toJSON + "}", "modelSpec")
+    val model = super.train(dataset)
+    val summary = model.summary
+    val objhist = summary.objectiveHistory.mkString("[", ", ", "]")
+    wc.logMessage("{\"uid\": \"" + uid + "\", \"lossData\": " + objhist + "}", "lossData")
+    wc.logMessage("{\"uid\": \"" + uid + "\", \"status\": \"Finished\"}", "status")
+    model
+  }
 }
