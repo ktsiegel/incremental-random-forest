@@ -85,8 +85,8 @@ function createDetails() {
     var detsButton = $('<button>', {'type': 'button'});
     detsButton.text('More Details');
     detsButton.on('click', function() {
-        jQuery.get('details', { 'test': 'test' });
-        window.location = 'details';
+        var uid = $('.row.details').prev().attr('id');
+        window.location = 'models/' + uid;
     });
     
     // arrange DOM elements as desired
@@ -119,7 +119,7 @@ function hideModel() {
 	if (typeof id != 'undefined') {
 		var row_id = '.row#' + id; 
 		//$(row_id).css({"background-color": "red"});
-		$(row_id).closest("tbody").find(".row.details").remove();
+		dets = $(row_id).closest("tbody").find(".row.details").detach();
 	}
 }
 

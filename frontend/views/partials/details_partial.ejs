@@ -1,2 +1,37 @@
 <h3 style="text-align:center;padding:1em;">Details</h3>
-<h3><%= test %></h3>
+    <small>
+    <table class="table table-striped row">
+      <thead>
+        <tr class="row">
+          <th>UID</th>
+          <th>Type</th>
+          <th>Features</th>
+          <th>Params</th>
+          <th>Status</th>
+          <th>Quality</th>
+        </tr>
+      </thead>
+      <tbody>
+	    <% models.forEach(function(model) { %>
+        <% if (model.uid == uid) { %>
+        <tr class="row" id="<%= model.uid%>">
+          <td class="col-sm-2"><%= model.uid %></td>
+          <td class="col-sm-2"><%= model.modelspec['type'] %></td>
+          <td class="col-sm-2"><%= model.modelspec['features'] %></td>
+          <td class="col-sm-2">
+          <span>
+          <% for (var key in model.modelspec) { %>
+          <% if (model.modelspec.hasOwnProperty(key) && !(key === 'type') && !(key === 'features')) { %>
+            <%=key%>: <%=model.modelspec[key]%><br>
+            <% } %>
+          <% } %>
+          </span>
+          </td>
+          <td class="col-sm-2" id="stat-<%= model.uid%>">Finished</td>
+          <td class="col-sm-2">?</td>
+        </tr>
+        <% } %>
+        <% }); %>
+      </tbody>
+    </table>
+    </small>
