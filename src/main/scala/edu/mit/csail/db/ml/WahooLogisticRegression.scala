@@ -20,6 +20,13 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
     case that: LogisticRegressionSpec => super.equals(o) && that.regParam == regParam
     case _ => false
   }
+  
+  override def generateModel(dbObject: DBObjectHelper): LogisticRegressionModel = {
+    new LogisticRegressionModel(dbObject.asString("uid"),
+      Vectors.dense(dbObject.asList[Double]("weights").toArray),
+      dbObject.asDouble("intercept")
+    )
+  }
 
   override def hashCode(): Int = super.hashCode() + regParam.hashCode()
 
@@ -43,13 +50,17 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
       "regParam" -> regParam,
       "maxIter" -> maxIter
     ))
-
-  override def generateModel(dbObject: DBObjectHelper): LogisticRegressionModel = {
-    new LogisticRegressionModel(dbObject.asString("uid"),
-      Vectors.dense(dbObject.asList[Double]("weights").toArray),
-      dbObject.asDouble("intercept")
-    )
-  }
+    
+  def toJSON(): String = {
+    val featureString = features.mkString("[\"", "\", \"", "\"]")
+    var sb = new StringBuilder
+    sb ++= "{"
+    sb ++= "\"specType\": \"LogisticRegressionModel\","
+    sb ++= "\"features\": " + featureString + ","
+    sb ++= "\"parameters\": [\"regParam: " + regParam + "\", \"maxIter: " + maxIter + "\"]"
+    sb ++= "}"
+    sb.toString
+  } 
 
   override def toString(): String = {
     val featureString = features.mkString("[", ", ", "]")
@@ -66,17 +77,13 @@ with HasModelDb with CanCache[LogisticRegressionModel] {
   this.setDb(wc.modelDB) // TODO: may go away if we change the cancache traits
 
   override def train(dataset: DataFrame): LogisticRegressionModel = {
-    wc.log_msg(s"Running model $uid")
-    val ms = modelSpec(dataset).toString
-    wc.log_msg(s"ModelSpec: $ms")
+    wc.logMessage("{\"uid\": \"" + uid + "\", \"status\": \"Running\"}", "status")
+    wc.logMessage("{\"uid\": \"" + uid + "\", \"modelSpec\": " + modelSpec(dataset).toJSON + "}", "modelSpec")
     val model = super.train(dataset)
-    wc.log_msg(s"Training complete")
     val summary = model.summary
-    val numIter = summary.totalIterations
     val objhist = summary.objectiveHistory.mkString("[", ", ", "]")
-    wc.log_msg(s"Objective History: $objhist")
-    wc.log_msg(s"# Iterations: $numIter")
-    wc.log_msg(s"Finished model $uid")
+    wc.logMessage("{\"uid\": \"" + uid + "\", \"lossData\": " + objhist + "}", "lossData")
+    wc.logMessage("{\"uid\": \"" + uid + "\", \"status\": \"Finished\"}", "status")
     model
   }
 
