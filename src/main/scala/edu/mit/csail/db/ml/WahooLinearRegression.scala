@@ -35,7 +35,8 @@ class LinearRegressionSpec(override val features: Array[String], val regParam: D
         "features" -> features,
         "regParam" -> regParam,
         "maxIter" -> maxIter
-      )
+      ),
+      "objectiveHistory" -> model.summary.objectiveHistory
     )
 
   override def toDBQuery(): MongoDBObject =
@@ -61,6 +62,23 @@ class LinearRegressionSpec(override val features: Array[String], val regParam: D
 class WahooLinearRegression(uid: String, wc: WahooContext) extends LinearRegression(uid)
 with HasModelDb with CanCache[LinearRegressionModel] with MultiThreadTrain[LinearRegressionModel] {
   this.setDb(wc.modelDB) // TODO: this may disappear if we change the CanCache traits
+
+  override def train(dataset: DataFrame): LinearRegressionModel = {
+    val log = new WahooLog(wc)
+    log.addMessage(s"Running model $uid")
+    val ms = modelSpec(dataset).toString
+    log.addMessage(s"ModelSpec: $ms")
+    val model = super.train(dataset)
+    log.addMessage(s"Training complete")
+    val summary = model.summary
+    val numIter = summary.totalIterations
+    val objhist = summary.objectiveHistory.mkString("[", ", ", "]")
+    log.addMessage(s"Objective History: $objhist")
+    log.addMessage(s"# Iterations: $numIter")
+    log.addMessage(s"Finished model $uid")
+    this.modelLogs += (model.uid -> log)
+    model
+  }
 
   def this(wc: WahooContext) = this(Identifiable.randomUID("linreg"), wc)
   //println("uid: " + this.uid)

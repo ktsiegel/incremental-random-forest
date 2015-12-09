@@ -23,7 +23,7 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
 
   override def hashCode(): Int = super.hashCode() + regParam.hashCode()
 
-  override def toDBObject(model: LogisticRegressionModel): MongoDBObject =
+  override def toDBObject(model: LogisticRegressionModel): MongoDBObject = {
     DBObject(
       "uid" -> model.uid,
       "weights" -> model.weights.toArray,
@@ -33,8 +33,10 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
         "features" -> features,
         "regParam" -> regParam,
         "maxIter" -> maxIter
-      )
+      ),
+      "objectiveHistory" -> model.summary.objectiveHistory
     )
+  }
 
   override def toDBQuery(): MongoDBObject = 
     DBObject("modelspec" -> DBObject(
@@ -67,17 +69,19 @@ with MultiThreadTrain[LogisticRegressionModel] {
   this.setDb(wc.modelDB) // TODO: may go away if we change the cancache traits
 
   override def train(dataset: DataFrame): LogisticRegressionModel = {
-    wc.log_msg(s"Running model $uid")
+    val log = new WahooLog(wc)
+    log.addMessage(s"Running model $uid")
     val ms = modelSpec(dataset).toString
-    wc.log_msg(s"ModelSpec: $ms")
+    log.addMessage(s"ModelSpec: $ms")
     val model = super.train(dataset)
-    wc.log_msg(s"Training complete")
+    log.addMessage(s"Training complete")
     val summary = model.summary
     val numIter = summary.totalIterations
     val objhist = summary.objectiveHistory.mkString("[", ", ", "]")
-    wc.log_msg(s"Objective History: $objhist")
-    wc.log_msg(s"# Iterations: $numIter")
-    wc.log_msg(s"Finished model $uid")
+    log.addMessage(s"Objective History: $objhist")
+    log.addMessage(s"# Iterations: $numIter")
+    log.addMessage(s"Finished model $uid")
+    this.modelLogs += (model.uid -> log)
     model
   }
 
