@@ -82,13 +82,13 @@ function createDetails() {
     detsBlurb.text("");
     
     // create button
-    var detsButton = $('<button>', {'type': 'button'});
+    /*var detsButton = $('<button>', {'type': 'button'});
     detsButton.text('More Details');
     detsButton.on('click', function() {
         var uid = $('.row.details').prev().attr('id');
         //window.location = 'models/' + uid;
          window.open('models/' + uid, '_blank');
-    });
+    });*/
     
     // arrange DOM elements as desired
     var detsContent = [];
@@ -97,7 +97,7 @@ function createDetails() {
     }
     
     detsContent[0].append(detsImageContainer);
-    detsContent[1].append(detsButton);
+    //detsContent[1].append(detsButton);
     detsContent[1].append(detsBlurb);
     details.append(detsContent[0]);
     details.append(detsContent[1]);
