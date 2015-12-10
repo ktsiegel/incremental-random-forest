@@ -4,7 +4,7 @@ const COL_INDEX_TYPE = 1;
 const COL_INDEX_FEATURES = 2;
 const COL_INDEX_PARAMS = 3;
 const COL_INDEX_STATUS = 4;
-const NUM_COLS = 6;
+const NUM_COLS = 5;
 
 
 // -- Variables --                          
@@ -78,15 +78,16 @@ function createDetails() {
     
     // create blurb
     // TODO: replace this with meaningful information
-    var detsBlurb = $('<p>');                       // Element - blurb
-    detsBlurb.text("UNDER CONSTRUCTION: In the not-so-distant future, data that persists across sessions will display here.");
+    var detsBlurb = $('<p>', {'class': 'det-txt'});                       // Element - blurb
+    detsBlurb.text("");
     
     // create button
     var detsButton = $('<button>', {'type': 'button'});
     detsButton.text('More Details');
     detsButton.on('click', function() {
         var uid = $('.row.details').prev().attr('id');
-        window.location = 'models/' + uid;
+        //window.location = 'models/' + uid;
+         window.open('models/' + uid, '_blank');
     });
     
     // arrange DOM elements as desired
@@ -96,8 +97,8 @@ function createDetails() {
     }
     
     detsContent[0].append(detsImageContainer);
-    detsContent[1].append(detsBlurb);
     detsContent[1].append(detsButton);
+    detsContent[1].append(detsBlurb);
     details.append(detsContent[0]);
     details.append(detsContent[1]);
     
@@ -148,13 +149,13 @@ function renderGoogleChart(uid, loss) {
     // create data table
     var data = new google.visualization.DataTable();
     data.addColumn('number', 'Iteration');
-    data.addColumn('number', 'Loss');
+    data.addColumn('number', 'Obj.');
     for(var i =0; i < loss.length; i++) {
         data.addRow( [i, loss[i]] );
     }
     
     // set chart options
-    var options = {'title': 'Loss vs. Iterations', 'width': 400, 'height': 300};
+    var options = {'title': 'Objective History', 'width': 400, 'height': 300};
     
     // draw chart
     chart = new google.visualization.ScatterChart(chart_el[0]); // script halts at this line
@@ -167,6 +168,11 @@ function renderGoogleChart(uid, loss) {
 function showModel() {
 	var id = $(this).attr('id');
 	if (typeof id != 'undefined') {
+        // update text
+        var paramCol = $(this).children(':nth-child(4)');
+        updateDetsTxt(paramCol.html());
+        
+        // update image
         updateDetsImage(renderDetailsImage(id));
         
 		var row_id = '.row#' + id;
@@ -190,6 +196,13 @@ function storeLossData(uid, loss) {
 */
 function updateDetsImage(img) {
     dets.find('.det-img:first-child').children(':first').replaceWith(img);
+}
+
+/*
+    This function updates the details element with the provided jQuery object.
+*/
+function updateDetsTxt(blurb) {
+    dets.find('.det-txt').replaceWith(blurb);
 }
 
 /*
