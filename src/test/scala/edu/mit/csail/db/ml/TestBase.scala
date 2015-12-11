@@ -1,5 +1,7 @@
 package org.apache.spark.ml
 
+import org.apache.hadoop.io.{NullWritable, Text}
+import org.apache.spark.mllib.linalg.VectorUDT
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.apache.log4j.{Logger, Level}
@@ -18,13 +20,21 @@ object TestBase {
   private val logDir = "testLog"
   new File(logDir).mkdir()
 
+  private val kaggleDataDir = "kaggleData/"
+  val WhatsCookingDataFile = kaggleDataDir + "train.json"
+
   // Set up Spark.
   private val conf = new SparkConf()
     .setMaster("local[2]")
     .setAppName("test")
     .set("spark.eventLog.enabled", "true")
     .set("spark.eventLog.dir", logDir)
+    .set("spark.serializer", "org.apache.spark.serializer.KryoSerializer")
+    .set("spark.sql.shuffle.partitions", "10")
+    .registerKryoClasses(Array(classOf[Text], classOf[NullWritable], classOf[VectorUDT]))
+
   val sc = new SparkContext(conf)
+
   val sqlContext = SQLContext.getOrCreate(sc)
 
   /**
@@ -49,4 +59,15 @@ object TestBase {
     val dbName = "test" + java.util.UUID.randomUUID().toString
     withContext(dbName)(fn)
   }
+
+  /**
+    * Helper function for computing the time elapsed when executing a function f.
+    */
+  def time(str: String)(f: () => Unit): Unit = {
+    val s = System.nanoTime
+    f()
+    println(str + " time: "+(System.nanoTime-s)/1e6+"ms")
+  }
+
+  def time(f: () => Unit): Unit = time("")(f)
 }
