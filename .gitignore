@@ -16,6 +16,7 @@ target/*
 
 # Ignore the testLog directory created by the unit tests.
 testLog/
+kaggleData/
 
 # Ignore node files
 node_modules/
