@@ -20,9 +20,8 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
   /**
     * Delete the entire database.
     */
-  def dropDb: Unit = {
-    modelDB.dropDatabase
-  }
+  def dropDb() = modelDB.dropDatabase
+
 
   /**
    * POSTs the data to the central Node.js server.

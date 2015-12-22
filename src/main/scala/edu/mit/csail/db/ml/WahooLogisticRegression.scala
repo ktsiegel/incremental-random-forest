@@ -21,7 +21,7 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
     case _ => false
   }
 
-  override def hashCode(): Int = super.hashCode() + regParam.hashCode()
+  override def hashCode: Int = super.hashCode() + regParam.hashCode()
 
   override def toDBObject(model: LogisticRegressionModel): MongoDBObject = {
     DBObject(
@@ -53,7 +53,7 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
     )
   }
 
-  override def toString(): String = {
+  override def toString: String = {
     val featureString = features.mkString("[", ", ", "]")
     s"LogisticRegression(features=$featureString, regParam=$regParam, maxIter=$maxIter)"
   }

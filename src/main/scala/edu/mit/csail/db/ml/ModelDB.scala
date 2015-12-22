@@ -2,7 +2,7 @@ package org.apache.spark.ml
 
 import org.apache.spark.sql.DataFrame
 import com.mongodb.casbah.Imports._
-import com.mongodb.WriteConcern;
+import com.mongodb.WriteConcern
 import java.security.MessageDigest
 
 /**
@@ -24,7 +24,7 @@ class ModelDb(private val databaseName: String, private val port: Int, dropFirst
   if (dropFirst) mongoClient(databaseName).dropDatabase()
   val modelCollection = mongoClient(databaseName)(modelCollName)
 
-  def dropDatabase = mongoClient(databaseName).dropDatabase()
+  def dropDatabase() = mongoClient(databaseName).dropDatabase()
 
   /**
    * Store this model in the database.
@@ -37,7 +37,7 @@ class ModelDb(private val databaseName: String, private val port: Int, dropFirst
     val modelObj: MongoDBObject = spec.toDBObject(model)
     // TODO dataframe may not be stored in same table, to allow for folds.
     modelObj += ("dataframe" -> hashDataFrame(dataset))
-    modelObj += ("log" -> log.toDBObject())
+    modelObj += ("log" -> log.toDBObject)
     val res = modelCollection.insert( modelObj, WriteConcern.SAFE)
   }
 
@@ -47,7 +47,7 @@ class ModelDb(private val databaseName: String, private val port: Int, dropFirst
    * @return A unique, deterministic MD5 hash of the data in the DataFrame
    */
   private def hashDataFrame(dataset: DataFrame) = {
-    val info = dataset.toString() + dataset.count.toString()
+    val info = dataset.toString() + dataset.count.toString
     MessageDigest.getInstance("MD5").digest(info.getBytes).map("%02x".format(_)).mkString
   }
 
@@ -58,13 +58,13 @@ class ModelDb(private val databaseName: String, private val port: Int, dropFirst
    * @return Whether the cache contains a model with the given specification.
    */
   def get[M <: Model[M]](spec: ModelSpec[M], dataset: DataFrame): M = {
-    val modelQuery = spec.toDBQuery()
+    val modelQuery = spec.toDBQuery
     modelQuery += "dataframe" -> hashDataFrame(dataset)
     modelCollection.findOne(modelQuery) match {
       case Some(modelInfo) => {
-        return spec.generateModel(new DBObjectHelper(modelInfo))
+        spec.generateModel(new DBObjectHelper(modelInfo))
       }
-      case None => return null.asInstanceOf[M]
+      case None => null.asInstanceOf[M]
     }
   }
 

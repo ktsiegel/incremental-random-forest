@@ -21,5 +21,5 @@ class DBObjectHelper(underlying: DBObject) {
 }
 
 object DBObjectHelper {
-  implicit def toDBObjectHelper(obj: DBObject) = new DBObjectHelper(obj)
+  implicit def toDBObjectHelper(obj: DBObject): DBObjectHelper = new DBObjectHelper(obj)
 }
