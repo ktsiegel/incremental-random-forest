@@ -1,29 +1,44 @@
 package org.apache.spark.ml
 
 import java.util.concurrent.ConcurrentHashMap
-
 /**
  * Configuration information required by Wahoo
  * All setter methods support chaining
- * Currently the type of DB is always to mongodb
  *
  * Refer SparkConf.scala
  */
+
+/**
+  * Object representing configuration information required by Wahoo.
+  *
+  * It is based on the SparkConf from Spark.
+  */
 class WahooConfig () {
   import WahooConfig._
-  private val settings = new ConcurrentHashMap[String, String]()
 
   /**
-    * Set parameter indicating whether the ModelDB should drop its existing model
-    * database before allowing interaction.
+    * The configuration is stored as a map from parameter name to parameter value.
     */
-  def setDropFirst(dropFirst: Boolean) = set(WahooDropFirst, dropFirst.toString)
-  def setDbName(dbName: String) = set(WahooDbName, dbName)
-  def setDbPort(dbPort: String) = set(WahooDbPort, dbPort)
-  def setUiPort(uiPort: String) = set(WahooUiPort, uiPort)
-  def setServerUrl(url: String) = set(WahooNodeJsName, url)
+  private val settings = new ConcurrentHashMap[String, String]()
 
-  /** Set a configuration variable. */
+  /** Set whether the database should be dropped when WahooContext connects. */
+  def setDropFirst(dropFirst: Boolean) = set(DropFirst.paramName, dropFirst.toString)
+
+  /** Set the name of the database. */
+  def setDbName(dbName: String) = set(DbName.paramName, dbName)
+
+  /** Set the port of the database. */
+  def setDbPort(dbPort: String) = set(DbPort.paramName, dbPort)
+
+  /** Set the URL of the web app that Wahoo connects to. */
+  def setWebAppUrl(url: String) = set(WebAppUrl.paramName, url)
+
+  /**
+    * Set a parameter.
+    * @param key - The name of the parameter.
+    * @param value - The value of the parameter.
+    * @return The WahooConfig object, this allows chaining of set method calls.
+    */
   def set(key: String, value: String): WahooConfig = {
     if (key == null) {
       throw new NullPointerException("null key")
@@ -35,48 +50,52 @@ class WahooConfig () {
     this
   }
 
+  /**
+    * Get a parameter.
+    * @param key - The name of the parameter.
+    * @return An Option containing the parameter value.
+    */
+  def get(key: String): Option[String] = Option(settings.get(key))
 
-  /** Get a parameter; throws a NoSuchElementException if it's not set */
-  def get(key: String): String = {
-    getOption(key).getOrElse(throw new NoSuchElementException(key))
-  }
+  /**
+    * Check whether the parameter with the given name is present in the WahooConfig.
+    * @param key - The name of the parameter.
+    * @return Whether there is a parameter with the given name present in the WahooConfig.
+    */
+  def hasKey(key: String) = get(key).nonEmpty
 
-  /** Get a parameter, falling back to a default if not set */
-  def get(key: String, defaultValue: String): String = {
-    getOption(key).getOrElse(defaultValue)
-  }
+  // Helper function for defining type-specific getter.
+  private def makeGetOrElse[T](mapper: String => T) = (key: String, default: T) =>
+    get(key).map((v) => mapper(v)).getOrElse(default)
 
-  /** Get a parameter as an Option */
-  def getOption(key: String): Option[String] = {
-    Option(settings.get(key))
-  }
-
-  /** Get a parameter as an integer, falling back to a default if not set */
-  def getInt(key: String, defaultValue: Int): Int = {
-    getOption(key).map(_.toInt).getOrElse(defaultValue)
-  }
-
-  /** Get a parameter as a boolean, falling back to a default if not set */
-  def getBool(key: String, defaultValue: Boolean): Boolean = {
-    getOption(key).map(_.toBoolean).getOrElse(defaultValue)
-  }
-
-  // TODO: implement parameterized get and rename to getOrElse
-  //def get[T <: AnyVal](key: String, default: T): T = {
-  //
-  //}
+  // Type specific getter functions. Each one takes two arguments (key: String, defaultValue: T)
+  // and returns a T (either the parameter value or the default value).
+  def getString = makeGetOrElse[String](_.toString)
+  def getInt = makeGetOrElse[Int](_.toInt)
+  def getBoolean = makeGetOrElse[Boolean](_.toBoolean)
+  def getDouble = makeGetOrElse[Double](_.toDouble)
+  def getFloat = makeGetOrElse[Float](_.toFloat)
 
 }
 
-// TODO: is this the best way to specify default?
+/**
+  * Helper class that pairs a parameter name (e.g. wahoo.dbName) with a default value.
+  */
+class WahooConfigParam[T](val paramName: String, val defaultValue: T)
+
+/**
+  * Companion object containing the parameters used by the WahooConfig class.
+  */
 object WahooConfig {
-  val WahooDropFirst = "wahoo.dropFirst"
-  val WahooDefaultDropFirst = false
-  val WahooNodeJsName = "wahoo.nodejs"
-  val WahooDbName = "wahoo.dbName"
-  val WahooDefaultDbName = "wahooDb"
-  val WahooDbPort = "wahoo.dbPort"
-  val WahooDefaultDbPort = 27017
-  val WahooUiPort = "wahoo.uiPort"
-  val WahooDefaultUiPort = 8089 //TODO: what is a good default?
+  // Whether the model database should be dropped when Wahoo connects to the database.
+  val DropFirst = new WahooConfigParam[Boolean]("wahoo.dropFirst", false)
+
+  // URL of the web app used for visualization, browsing models, etc.
+  val WebAppUrl = new WahooConfigParam[String]("wahoo.webAppUrl", "localhost:3000")
+
+  // The name of the database to connect to.
+  val DbName = new WahooConfigParam[String]("wahoo.dbName", "wahooDb")
+
+  // The port of the database.
+  val DbPort = new WahooConfigParam[Int]("wahoo.dbPort", 27017)
 }
