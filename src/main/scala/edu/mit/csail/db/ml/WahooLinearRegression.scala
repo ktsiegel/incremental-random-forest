@@ -23,7 +23,7 @@ class LinearRegressionSpec(override val features: Array[String], val regParam: D
     case _ => false
   }
 
-  override def hashCode(): Int = super.hashCode() + regParam.hashCode()
+  override def hashCode: Int = super.hashCode() + regParam.hashCode()
 
   override def toDBObject(model: LinearRegressionModel): MongoDBObject =
     DBObject(
@@ -39,7 +39,7 @@ class LinearRegressionSpec(override val features: Array[String], val regParam: D
       "objectiveHistory" -> model.summary.objectiveHistory
     )
 
-  override def toDBQuery(): MongoDBObject =
+  override def toDBQuery: MongoDBObject =
     DBObject("modelspec" -> DBObject(
       "type" -> "LinearRegressionModel",
       "features" -> features,

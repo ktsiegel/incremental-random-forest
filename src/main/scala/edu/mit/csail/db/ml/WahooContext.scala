@@ -12,17 +12,16 @@ import scalaj.http.Http
 class WahooContext (sc: SparkContext, var wc: WahooConfig) {
   // set up modelDB
   var modelDB = new ModelDb(
-    wc.get(WahooConfig.WahooDbName, WahooConfig.WahooDefaultDbName),
-    wc.getInt(WahooConfig.WahooDbPort, WahooConfig.WahooDefaultDbPort),
-    wc.getBool(WahooConfig.WahooDropFirst, WahooConfig.WahooDefaultDropFirst)
+    wc.getString(WahooConfig.DbName.paramName, WahooConfig.DbName.defaultValue),
+    wc.getInt(WahooConfig.DbPort.paramName, WahooConfig.DbPort.defaultValue),
+    wc.getBoolean(WahooConfig.DropFirst.paramName, WahooConfig.DropFirst.defaultValue)
   )
 
   /**
     * Delete the entire database.
     */
-  def dropDb: Unit = {
-    modelDB.dropDatabase
-  }
+  def dropDb() = modelDB.dropDatabase
+
 
   /**
    * POSTs the data to the central Node.js server.
@@ -30,7 +29,7 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
    * @param data The sequence of pairs to POST to the server. It will be turned into a 
    * JSON structure.
    */
-  def log(data: Seq[(String, String)]) = wc.getOption(WahooConfig.WahooNodeJsName) match {
+  def log(data: Seq[(String, String)]) = wc.get(WahooConfig.WebAppUrl.paramName) match {
     case Some(url) => Http(url).postForm(data).asString
     case None => {} 
   }

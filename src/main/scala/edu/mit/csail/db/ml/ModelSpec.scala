@@ -41,7 +41,7 @@ abstract class ModelSpec[M <: Model[M]](val features: Array[String]) {
    * Used to query the DB for all models stemming for a certain ModelSpec.
    * @return a MongoDB object storing information about this ModelSpec.
    */
-  def toDBQuery(): MongoDBObject
+  def toDBQuery: MongoDBObject
 
   /**
    * Generates a Model object from JSON data stored in a MongoDB object.
