@@ -59,9 +59,9 @@ class LinearRegressionSpec(override val features: Array[String], val regParam: D
  * A smarter Linear regression which caches old models in the model database and looks them up before
  * trying to retrain. Make sure to to call the setDb method to give it a model database.
  */
-class WahooLinearRegression(uid: String, wc: WahooContext) extends LinearRegression(uid)
+class WahooLinearRegression(uid: String, wc: Option[WahooContext]) extends LinearRegression(uid)
 with HasModelDb with CanCache[LinearRegressionModel] with MultiThreadTrain[LinearRegressionModel] {
-  this.setDb(wc.modelDB) // TODO: this may disappear if we change the CanCache traits
+  if (wc.isDefined) this.setDb(wc.get.modelDB)
 
   override def train(dataset: DataFrame): LinearRegressionModel = {
     val log = new WahooLog(wc)
@@ -80,7 +80,7 @@ with HasModelDb with CanCache[LinearRegressionModel] with MultiThreadTrain[Linea
     model
   }
 
-  def this(wc: WahooContext) = this(Identifiable.randomUID("linreg"), wc)
+  def this(wc: Option[WahooContext]) = this(Identifiable.randomUID("linreg"), wc)
   //println("uid: " + this.uid)
   override def modelSpec(dataset: DataFrame): LinearRegressionSpec =
     new LinearRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)

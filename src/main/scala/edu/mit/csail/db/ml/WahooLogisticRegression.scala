@@ -63,10 +63,10 @@ class LogisticRegressionSpec(override val features: Array[String], val regParam:
  * A smarter logistic regression which caches old models in the model database and looks them up before
  * trying to retrain. Make sure to to call the setDb method to give it a model database.
  */
-class WahooLogisticRegression(uid: String, wc: WahooContext) extends LogisticRegression(uid)
+class WahooLogisticRegression(uid: String, wc: Option[WahooContext]) extends LogisticRegression(uid)
 with HasModelDb with CanCache[LogisticRegressionModel]
 with MultiThreadTrain[LogisticRegressionModel] {
-  this.setDb(wc.modelDB) // TODO: may go away if we change the cancache traits
+  if (wc.isDefined) this.setDb(wc.get.modelDB)
 
   override def train(dataset: DataFrame): LogisticRegressionModel = {
     val log = new WahooLog(wc)
@@ -85,7 +85,8 @@ with MultiThreadTrain[LogisticRegressionModel] {
     model
   }
 
-  def this(wc: WahooContext) = this(Identifiable.randomUID("logreg"), wc)
+  def this(wc: Option[WahooContext]) = this(Identifiable.randomUID("logreg"), wc)
+  def this(uid: String) = this(uid, None)
   override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
     new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
 }

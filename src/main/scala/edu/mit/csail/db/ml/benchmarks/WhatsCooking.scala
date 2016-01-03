@@ -21,7 +21,7 @@ package edu.mit.csail.db.ml.benchmarks
   */
 
 import org.apache.spark.ml.param.ParamMap
-import org.apache.spark.ml.{Transformer, Estimator}
+import org.apache.spark.ml._
 import org.apache.spark.sql.types.StructType
 import org.apache.spark.storage.StorageLevel
 
@@ -140,6 +140,8 @@ object WhatsCooking {
 
     val sc = new SparkContext(conf)
     val sqlContext  = new SQLContext(sc)
+    val wahooConfig = new WahooConfig()
+    val wahooContext = new WahooContext(sc, wahooConfig)
     val recipes = sqlContext.read.json(pathToDataFile)
 
     val dataset = sumVector.preprocess(recipes, sqlContext)
@@ -151,7 +153,7 @@ object WhatsCooking {
     val training = simplify(splits(0))
     val test = simplify(splits(1))
 
-    val singleClassifier = new LogisticRegression().setMaxIter(3)
+    val singleClassifier = wahooContext.createLogisticRegression.setMaxIter(3)
     val eval = new MulticlassClassificationEvaluator()
       .setLabelCol("labelIndex").setPredictionCol("predict").setMetricName("f1")
 
