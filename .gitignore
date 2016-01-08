@@ -3,7 +3,6 @@
 
 # Ignore build results.
 target/*
-project/
 
 
 # Ignore IntelliJ config files.
@@ -11,7 +10,7 @@ project/
 .idea/
 
 # Ignore SBT build results
-project/*
+project/*/
 target/*
 
 # Ignore the testLog directory created by the unit tests.

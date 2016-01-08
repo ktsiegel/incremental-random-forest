@@ -46,10 +46,10 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
   // factory methods
   // TODO: make setDb chain like the rest. Related to issue #35
   def createLogisticRegression: WahooLogisticRegression = {
-    new WahooLogisticRegression(this)
+    new WahooLogisticRegression(Some(this))
   }
 
   def createLinearRegression: WahooLinearRegression = {
-    new WahooLinearRegression(this)
+    new WahooLinearRegression(Some(this))
   }
 }

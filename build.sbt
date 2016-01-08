@@ -4,6 +4,9 @@ version := "1.0"
 
 scalaVersion := "2.11.7"
 
+test in assembly := {}
+assemblyJarName in assembly := "ml.jar"
+
 libraryDependencies += "org.apache.spark" %% "spark-core" % "1.5.1" % "provided"
 libraryDependencies += "org.apache.spark" %% "spark-sql" % "1.5.1" % "provided"
 libraryDependencies += "org.apache.spark" %% "spark-mllib" % "1.5.1" % "provided"
