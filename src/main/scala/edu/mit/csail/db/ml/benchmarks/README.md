@@ -24,16 +24,15 @@ Now, run
 sbt clean && sbt assembly
 ```
 
-Then, you can either run the benchmark in simple mode:
+Then, you can run the binary benchmark to train a Logistic Regression model for binary classification
+and specify whether to use Wahoo or Spark classes:
 
 ```
-spark-submit —master local[4] —class "edu.mit.csail.db.ml.benchmarks.WhatsCooking" target/scala-2.11/ml.jar <path_to_preprocessed_whats_cooking_json> simple
+spark-submit --master local[4] --class "edu.mit.csail.db.ml.benchmarks.whatscooking.Binary" target/scala-2.11/ml.jar <path_to_preprocessed_whats_cooking_json> <wahoo OR spark>
 ```
 
-This will train a Logistic Regression classifier. If you omit the "simple" positional argument,
+You can also train a multiclass classifier (a one vs. rest classifier based on Logistic Regression).
 
 ```
-spark-submit —master local[4] —class "edu.mit.csail.db.ml.benchmarks.WhatsCooking" target/scala-2.11/ml.jar <path_to_preprocessed_whats_cooking_json>
+spark-submit --master local[4] --class "edu.mit.csail.db.ml.benchmarks.whatscooking.Multiclass" target/scala-2.11/ml.jar <path_to_preprocessed_whats_cooking_json> <wahoo OR spark>
 ```
-
-then the benchmark will train a one-vs-rest classifer based on Logistic Regression.
