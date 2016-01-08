@@ -1,26 +1,22 @@
-var db = require('monk')('localhost/wahootest');
-var models = db.get('models');
+'use strict';
+
+const db = require('monk')('localhost/wahootest');
+const models = db.get('models');
 
 /**
  * This utility class handles accessing and modifying
  * the MongoDB collection that stores the trained models.
  */
-var Utils = function() {
-  var that = Object.create(Utils.prototype);
-
+class Utils {
   /**
    * Finds all the models in the database.
-   * @param callback - the callback function to which the array
-   *  holding all models is passed.
+   * @param callback - Executed as callback(err, models), where models is the list of MongoDB
+   * documents.
    */
-  that.findAll = function(callback) {
-    models.find({}, function(err, allModels) {
-      callback(err, allModels);
-    });
-  };
+  findAll(callback) {
+    models.find({}, callback)
+  }
+}
 
-  Object.freeze(that);
-  return that;
-};
-
-module.exports = Utils();
+// Export a singleton.
+module.exports = new Utils();
