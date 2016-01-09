@@ -8,10 +8,11 @@ import java.security.MessageDigest
 /**
  * This is the model database.
  * Currently, it stores all the models in a single MongoDB collection.
- * It connects to to localhost
- * // TODO: allow connections to arbitrary servers
  */
-class ModelDb(private val databaseName: String, private val port: Int, dropFirst: Boolean = false) {
+class ModelDb(private val databaseName: String,
+              private val databaseHost: String,
+              private val port: Int,
+              dropFirst: Boolean = false) {
   /**
    * Set up database connection
    */
@@ -20,7 +21,7 @@ class ModelDb(private val databaseName: String, private val port: Int, dropFirst
   val evalCollName = "eval" // collection storing information on evaluation runs
   // TODO (mvartak): do we need other tables?
 
-  val mongoClient = MongoClient("localhost", port)
+  val mongoClient = MongoClient(databaseHost, port)
   if (dropFirst) mongoClient(databaseName).dropDatabase()
   val modelCollection = mongoClient(databaseName)(modelCollName)
 
