@@ -44,7 +44,7 @@ object TestBase {
     * @param fn - Function to execute with the WahooContext
     */
   def withContext(dbName: String)(fn: WahooContext => Unit): Unit = {
-    val wconf = new WahooConfig().setDbName(dbName).setDropFirst(true)
+    val wconf = new WahooConfig().setDbName(dbName).setDropFirst(true).setLoggingErrorsFatal(true)
     val wcontext = new WahooContext(sc, wconf)
 
     fn(wcontext)

@@ -1,7 +1,7 @@
 package org.apache.spark.ml
 
 import org.apache.spark.SparkContext
-import scalaj.http.Http
+import scalaj.http.{HttpResponse, Http}
 
 /**
  * Main entry point for Wahoo functionality. It is used to initialize the modelDB, start the UI
@@ -9,7 +9,8 @@ import scalaj.http.Http
  *
  * @param sc SparkContext to be used by Wahoo to execute jobs
  */
-class WahooContext (sc: SparkContext, var wc: WahooConfig) {
+class WahooContext (sc: SparkContext,
+                    var wc: WahooConfig) {
   // set up modelDB
   var modelDB = new ModelDb(
     wc.getString(WahooConfig.DbName.paramName, WahooConfig.DbName.defaultValue),
@@ -17,11 +18,13 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
     wc.getBoolean(WahooConfig.DropFirst.paramName, WahooConfig.DropFirst.defaultValue)
   )
 
+  // Exception class.
+  class LoggingFailedException(message: String) extends Exception(message)
+
   /**
     * Delete the entire database.
     */
   def dropDb() = modelDB.dropDatabase
-
 
   /**
    * POSTs the data to the central Node.js server.
@@ -30,7 +33,15 @@ class WahooContext (sc: SparkContext, var wc: WahooConfig) {
    * JSON structure.
    */
   def log(data: Seq[(String, String)]) = wc.get(WahooConfig.WebAppUrl.paramName) match {
-    case Some(url) => Http(url).postForm(data).asString
+    case Some(url) => {
+      val response = Http(url).postForm(data).asString
+      if (response.isError &&
+        wc.getBoolean(WahooConfig.LoggingErrorsFatal.paramName,
+          WahooConfig.LoggingErrorsFatal.defaultValue)) {
+        throw new LoggingFailedException("Failed to log message to server, status code: " +
+          response.statusLine)
+      }
+    }
     case None => {} 
   }
 
