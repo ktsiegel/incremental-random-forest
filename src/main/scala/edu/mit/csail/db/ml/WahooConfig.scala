@@ -102,5 +102,10 @@ object WahooConfig {
   // The port of the database.
   val DbPort = new WahooConfigParam[Int]("wahoo.dbPort", 27017)
 
+  // The hostname of the database.
+  val DbHost = new WahooConfigParam[String]("wahoo.dbHost", "localhost")
+
+  // Whether logging errors should trigger exceptions.
   val LoggingErrorsFatal = new WahooConfigParam[Boolean]("wahoo.loggingErrorsFatal", false)
+
 }

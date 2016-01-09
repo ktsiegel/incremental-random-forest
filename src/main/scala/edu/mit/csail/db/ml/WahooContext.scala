@@ -14,6 +14,7 @@ class WahooContext (sc: SparkContext,
   // set up modelDB
   var modelDB = new ModelDb(
     wc.getString(WahooConfig.DbName.paramName, WahooConfig.DbName.defaultValue),
+    wc.getString(WahooConfig.DbHost.paramName, WahooConfig.DbHost.defaultValue),
     wc.getInt(WahooConfig.DbPort.paramName, WahooConfig.DbPort.defaultValue),
     wc.getBoolean(WahooConfig.DropFirst.paramName, WahooConfig.DropFirst.defaultValue)
   )
@@ -24,7 +25,7 @@ class WahooContext (sc: SparkContext,
   /**
     * Delete the entire database.
     */
-  def dropDb() = modelDB.dropDatabase
+  def dropDb() = modelDB.dropDatabase()
 
   /**
    * POSTs the data to the central Node.js server.
