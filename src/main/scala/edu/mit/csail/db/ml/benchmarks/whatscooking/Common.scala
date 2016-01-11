@@ -47,7 +47,7 @@ object Common {
     val recipes = sqlContext.read.json(pathToDataFile)
 
     // Preprocess the dataset and split it into training and testing datasets.
-    val dataset = SumVector.preprocess(recipes, sqlContext)
+    val dataset = Preprocessor.preprocess(recipes, sqlContext)
     val splits = dataset.randomSplit(Array(0.7, 0.3))
 
     (splits(0), splits(1), wahooContext, shouldUseWahoo)

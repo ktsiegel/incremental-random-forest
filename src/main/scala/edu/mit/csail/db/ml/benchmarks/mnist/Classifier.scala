@@ -1,9 +1,10 @@
 package edu.mit.csail.db.ml.benchmarks.mnist
 
+import edu.mit.csail.db.ml.benchmarks.Timing
 import org.apache.spark.ml.{WahooContext, WahooConfig}
 import org.apache.spark.ml.classification.{OneVsRest, LogisticRegression}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
+import org.apache.spark.ml.tuning.{CrossValidatorModel, CrossValidator, ParamGridBuilder}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.sql.SQLContext
@@ -94,10 +95,15 @@ object Classifier {
       .setEvaluator(eval)
 
     // Find the best model.
-    val model = crossValidator.fit(training)
+    var model: Option[CrossValidatorModel] = None
+    Timing.time("Cross validate") { () =>
+      model = Some(crossValidator.fit(training))
+    }()
 
     // Compute the F1 score.
-    val f1Score = eval.evaluate(model.transform(test))
-    println("F1 score is " + f1Score)
+    Timing.time("Evaluate") { () =>
+      val f1Score = eval.evaluate(model.get.transform(test))
+      println("F1 score is " + f1Score)
+    }()
   }
 }
