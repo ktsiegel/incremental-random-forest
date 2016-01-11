@@ -18,7 +18,7 @@ object Multiclass {
       wc.createLogisticRegression
     } else {
       new LogisticRegression
-    }.setMaxIter(3)
+    }.setMaxIter(100)
 
     // Create the evaluator.
     val eval = new MulticlassClassificationEvaluator()
