@@ -79,7 +79,7 @@ object sumVector extends UserDefinedAggregateFunction {
     val aggregateFeatures = encoded
       .select("id", "label", "featureVector")
       .groupBy("id")
-      .agg(first("label") as "label", sumVector($"featureVector") as "feature")
+      .agg(first("label") as "label", Preprocessor($"featureVector") as "feature")
       .select("label", "feature")
 
     val labelIndexer = new StringIndexer()
