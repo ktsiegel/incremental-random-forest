@@ -17,7 +17,7 @@ object Multiclass {
     val singleClassifier = if (shouldUseWahoo) {
       wc.createLogisticRegression
     } else {
-      new LogisticRegression
+      new LogisticRegression("whatscookingtest_multiclass")
     }.setMaxIter(100)
 
     // Create the evaluator.

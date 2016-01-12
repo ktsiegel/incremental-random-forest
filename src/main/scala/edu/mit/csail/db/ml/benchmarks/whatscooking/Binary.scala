@@ -18,7 +18,7 @@ object Binary {
     val singleClassifier = if (shouldUseWahoo) {
       wc.createLogisticRegression
     } else {
-      new LogisticRegression
+      new LogisticRegression("whatscookingtest_binary")
     }.setMaxIter(100)
 
     val eval = new MulticlassClassificationEvaluator()
