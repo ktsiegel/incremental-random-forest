@@ -5,7 +5,7 @@ import org.apache.spark.sql.{SQLContext, DataFrame}
 import org.scalatest.{FunSuite, BeforeAndAfter}
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.Row
-import org.apache.spark.ml.classification.{LogisticRegressionModel}
+import org.apache.spark.ml.classification.{WahooLogisticRegression, LogisticRegressionModel}
 
 /**
  * Check whether models are cached in the model database.
