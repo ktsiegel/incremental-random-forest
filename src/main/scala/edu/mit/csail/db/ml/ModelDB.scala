@@ -123,7 +123,7 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
    * @param dataset - The dataset to train on.
    * @return The trained model.
    */
-  abstract override def fit(dataset: DataFrame): M = {
+  abstract override def fit(dataset: DataFrame): M =
     super.getDb match {
       case Some(db) =>
         db.getOrElse[M](modelSpec(dataset), dataset)(() => {
@@ -134,7 +134,6 @@ trait CanCache[M <: Model[M]] extends Estimator[M] with HasModelDb {
       case None =>
         super.fit(dataset)
     }
-  }
 
   // test function to check if the model came form the DB
   // TODO: this is temporary, need to change/remove
