@@ -1,6 +1,7 @@
 package edu.mit.csail.db.ml.benchmarks.whatscooking
 
-import org.apache.spark.ml.classification.LogisticRegression
+import edu.mit.csail.db.ml.benchmarks.Timing
+import org.apache.spark.ml.classification.{LogisticRegressionModel, LogisticRegression}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.sql.DataFrame
@@ -18,7 +19,7 @@ object Binary {
       wc.createLogisticRegression
     } else {
       new LogisticRegression
-    }.setMaxIter(3)
+    }.setMaxIter(100)
 
     val eval = new MulticlassClassificationEvaluator()
       .setLabelCol("labelIndex").setPredictionCol("predict").setMetricName("f1")
@@ -43,9 +44,14 @@ object Binary {
       singleClassifier.fitIntercept -> false
     )
 
-    val models = singleClassifier.fit(simplify(training), Array(pm1, pm2, pm3))
+    var models: Seq[LogisticRegressionModel] = Seq()
+    Timing.time("Training on three ParamMaps") { () =>
+      models = singleClassifier.fit(simplify(training), Array(pm1, pm2, pm3))
+    }()
 
-    val f1Scores = models.map((model) => eval.evaluate(model.transform(simplify(test))))
-    println("F1 scores " + f1Scores)
+    Timing.time("Evaluating") { () =>
+      val f1Scores = models.map((model) => eval.evaluate(model.transform(simplify(test))))
+      println("F1 scores " + f1Scores)
+    }()
   }
 }

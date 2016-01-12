@@ -1,9 +1,9 @@
 package edu.mit.csail.db.ml.benchmarks.whatscooking
 
+import edu.mit.csail.db.ml.benchmarks.Timing
 import org.apache.spark.ml.classification.{LogisticRegression, OneVsRest}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.tuning.{CrossValidator, ParamGridBuilder}
-import org.apache.spark.sql.DataFrame
+import org.apache.spark.ml.tuning.{CrossValidatorModel, CrossValidator, ParamGridBuilder}
 
 /**
   * Train a one vs. rest classifier for the What's cooking dataset.
@@ -18,7 +18,7 @@ object Multiclass {
       wc.createLogisticRegression
     } else {
       new LogisticRegression
-    }.setMaxIter(3)
+    }.setMaxIter(100)
 
     // Create the evaluator.
     val eval = new MulticlassClassificationEvaluator()
@@ -43,10 +43,15 @@ object Multiclass {
       .setEstimator(multiClassifier).setEstimatorParamMaps(params).setNumFolds(2).setEvaluator(eval)
 
     // Find the best model through cross validation on the training set.
-    val model = crossValidator.fit(training)
+    var model: Option[CrossValidatorModel] = None
+    Timing.time("Cross validating") { () =>
+      model = Some(crossValidator.fit(training))
+    }()
 
     // Evaluate the model on the test set.
-    val f1Score = eval.evaluate(model.transform(test))
-    println("F1 score is " + f1Score)
+    Timing.time("Evaluating model") { () =>
+      val f1Score = eval.evaluate(model.get.transform(test))
+      println("F1 score is " + f1Score)
+    }()
   }
 }

@@ -13,7 +13,7 @@ import scala.collection.mutable
 /**
   * Aggregate function for summing vectors together.
   */
-object SumVector extends UserDefinedAggregateFunction {
+object Preprocessor extends UserDefinedAggregateFunction {
   def inputSchema = new StructType().add("feature", new VectorUDT)
   def bufferSchema = new StructType().add("aggregate", new VectorUDT)
   def dataType = new VectorUDT
@@ -70,7 +70,7 @@ object SumVector extends UserDefinedAggregateFunction {
     val aggregateFeatures = encoded
       .select("id", "label", "featureVector")
       .groupBy("id")
-      .agg(first("label") as "label", SumVector($"featureVector") as "feature")
+      .agg(first("label") as "label", Preprocessor($"featureVector") as "feature")
       .select("label", "feature")
 
     val labelIndexer = new StringIndexer()
