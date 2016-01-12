@@ -33,6 +33,9 @@ class WahooConfig () {
   /** Set the URL of the web app that Wahoo connects to. */
   def setWebAppUrl(url: String) = set(WebAppUrl.paramName, url)
 
+  /** Decide whether logging errors should be treated as fatal (throws exception) */
+  def setLoggingErrorsFatal(areFatal: Boolean) = set(LoggingErrorsFatal.paramName, areFatal.toString)
+
   /**
     * Set a parameter.
     * @param key - The name of the parameter.
@@ -98,4 +101,11 @@ object WahooConfig {
 
   // The port of the database.
   val DbPort = new WahooConfigParam[Int]("wahoo.dbPort", 27017)
+
+  // The hostname of the database.
+  val DbHost = new WahooConfigParam[String]("wahoo.dbHost", "localhost")
+
+  // Whether logging errors should trigger exceptions.
+  val LoggingErrorsFatal = new WahooConfigParam[Boolean]("wahoo.loggingErrorsFatal", false)
+
 }

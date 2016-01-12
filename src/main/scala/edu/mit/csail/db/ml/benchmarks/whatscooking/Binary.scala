@@ -19,7 +19,7 @@ object Binary {
       wc.createLogisticRegression
     } else {
       new LogisticRegression
-    }.setMaxIter(2000)
+    }.setMaxIter(100)
 
     val eval = new MulticlassClassificationEvaluator()
       .setLabelCol("labelIndex").setPredictionCol("predict").setMetricName("f1")

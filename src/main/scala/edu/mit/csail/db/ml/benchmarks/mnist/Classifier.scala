@@ -63,10 +63,10 @@ object Classifier {
     val split = mnist.randomSplit(Array(0.7, 0.3))
     val (training, test) = (split(0), split(1))
     val singleClassifer = if (shouldUseWahoo) {
-      new LogisticRegression().setMaxIter(20)
+      new LogisticRegression()
     } else {
       wahooContext.createLogisticRegression
-    }
+    }.setMaxIter(100)
 
     // Create a param grid to search over.
     val params = new ParamGridBuilder()
