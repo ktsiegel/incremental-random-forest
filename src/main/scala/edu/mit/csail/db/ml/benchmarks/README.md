@@ -1,6 +1,6 @@
 # What's Cooking
 ## Description
-This is a Kaggle competition in which competitor are asked to determine the type of cuisine (e.g. 
+This is a Kaggle competition in which competitors are asked to determine the type of cuisine (e.g.
 Italian, Greek) based on the ingredients in the dish (e.g. tomatoes, shredded parmesan).
 
 ## Data
@@ -35,4 +35,27 @@ You can also train a multiclass classifier (a one vs. rest classifier based on L
 
 ```
 spark-submit --master local[4] --class "edu.mit.csail.db.ml.benchmarks.whatscooking.Multiclass" target/scala-2.11/ml.jar <path_to_preprocessed_whats_cooking_json> <wahoo OR spark>
+```
+
+# MNIST
+This is a Kaggle competition in which competitors are asked to classify pictures of handwritten digits
+(e.g. picture of "1" -> 1).
+
+## Data
+Download the data from the [Kaggle competition URL](https://www.kaggle.com/c/digit-recognizer).
+
+## Preprocessing
+No preprocessing is required.
+
+## Benchmark
+First run
+
+```
+sbt clean && sbt assembly
+```
+
+Then, run
+
+```
+spark-submit --master local[4] --class "edu.mit.csail.db.ml.benchmarks.mnist.Classifier" target/scala-2.11/ml.jar <path_to_mnist_csv> <wahoo|spark>
 ```
