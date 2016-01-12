@@ -1,17 +1,63 @@
-package org.apache.spark.ml.classification
+package org.apache.spark.ml
 
-import org.apache.spark.ml.feature.Instance
+import org.apache.spark.ml.classification.{LogisticRegression, LogisticRegressionModel}
+import org.apache.spark.sql.DataFrame
+import com.mongodb.casbah.Imports._
 import org.apache.spark.ml.util._
-import org.apache.spark.mllib.evaluation.BinaryClassificationMetrics
-import org.apache.spark.mllib.linalg._
-import org.apache.spark.mllib.linalg.BLAS._
-import org.apache.spark.ml.MultivariateOnlineSummarizer
-import org.apache.spark.mllib.util.MLUtils
-import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.{DataFrame, Row}
-import org.apache.spark.sql.functions.{col, lit}
-import org.apache.spark.storage.StorageLevel
-import org.apache.spark.ml.{HasModelDb, CanCache, LogisticRegressionSpec, WahooContext}
+import org.apache.spark.mllib.linalg.{Vector, Vectors}
+
+//TODO: Add more fields to this specification.
+/**
+ * A specification representing a logistic regression to train. It should include anything that would
+ * be necessary for training a logistic regression model.
+ * @param features - The features to use in training.
+ * @param regParam - The regularization parameter.
+ */
+class LogisticRegressionSpec(override val features: Array[String], val regParam: Double, val maxIter: Int)
+  extends ModelSpec[LogisticRegressionModel](features) {
+
+  override def equals(o: Any): Boolean = o match {
+    case that: LogisticRegressionSpec => super.equals(o) && that.regParam == regParam
+    case _ => false
+  }
+
+  override def hashCode: Int = super.hashCode() + regParam.hashCode()
+
+  override def toDBObject(model: LogisticRegressionModel): MongoDBObject = {
+    DBObject(
+      "uid" -> model.uid,
+      "weights" -> model.weights.toArray,
+      "intercept" -> model.intercept,
+      "modelspec" -> DBObject(
+        "type" -> "LogisticRegressionModel",
+        "features" -> features,
+        "regParam" -> regParam,
+        "maxIter" -> maxIter
+      ),
+      "objectiveHistory" -> model.summary.objectiveHistory
+    )
+  }
+
+  override def toDBQuery(): MongoDBObject = 
+    DBObject("modelspec" -> DBObject(
+      "type" -> "LogisticRegressionModel",
+      "features" -> features,
+      "regParam" -> regParam,
+      "maxIter" -> maxIter
+    ))
+
+  override def generateModel(dbObject: DBObjectHelper): LogisticRegressionModel = {
+    new LogisticRegressionModel(dbObject.asString("uid"),
+      Vectors.dense(dbObject.asList[Double]("weights").toArray),
+      dbObject.asDouble("intercept")
+    )
+  }
+
+  override def toString: String = {
+    val featureString = features.mkString("[", ", ", "]")
+    s"LogisticRegression(features=$featureString, regParam=$regParam, maxIter=$maxIter)"
+  }
+}
 
 /**
  * A smarter logistic regression which caches old models in the model database and looks them up before
@@ -21,11 +67,6 @@ class WahooLogisticRegression(uid: String, wc: Option[WahooContext]) extends Log
 with HasModelDb with CanCache[LogisticRegressionModel]
 with MultiThreadTrain[LogisticRegressionModel] {
   if (wc.isDefined) this.setDb(wc.get.modelDB)
-
-  override def toString: String = {
-    val featureString = features.mkString("[", ", ", "]")
-    s"LogisticRegression(features=$featureString, regParam=$regParam, maxIter=$maxIter)"
-  }
 
   override def train(dataset: DataFrame): LogisticRegressionModel = {
     val log = new WahooLog(wc)
@@ -48,26 +89,4 @@ with MultiThreadTrain[LogisticRegressionModel] {
   def this(uid: String) = this(uid, None)
   override def modelSpec(dataset: DataFrame): LogisticRegressionSpec =
     new LogisticRegressionSpec(dataset.columns, super.getRegParam, super.getMaxIter)
-
-  /**
-   * Trains a model using a warm start. 
-   * @param oldModel - the trained model that will be trained further
-   * @param dataset - the dataset on which the model will be trained
-   * @param addedIterations - the additional iterations on which the model
-   *                          will be trained
-   * @return a trained model
-   */
-  def train(oldModel: LogisticRegressionModel, dataset: DataFrame, addedIterations: Int): LogisticRegressionModel = {
-    val instances = getInstances(dataset)
-    val (summarizer, labelSummarizer) = getSummarizers(instances)
-    val initialCoefficients = Vectors.dense(
-      if ($(fitIntercept)) oldModel.weights.toArray :+ oldModel.intercept
-      else oldModel.weights.toArray)
-    runRegression(dataset, instances, summarizer, labelSummarizer, initialCoefficients)
-  }
 }
-
-object WahooLogisticRegression extends DefaultParamsReadable[WahooLogisticRegression] {
-  override def load(path: String): WahooLogisticRegression = super.load(path)
-}
-
