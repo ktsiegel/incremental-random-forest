@@ -108,4 +108,9 @@ Then run
 spark-submit --master <spark_master> --class "edu.mit.csail.db.ml.benchmarks.census.Forest" target/scala-2.11/ml.jar <path_to_adult.data>
 ```
 
-**NOTE:** This does not support Wahoo classes yet.
+To benchmark the WahooRandomForestClassifier class, run
+```
+spark-submit --master <spark_master> --class "edu.mit.csail.db.ml.benchmarks.census.Forest" target/scala-2.11/ml.jar <path_to_adult.data>
+```
+
+**NOTE:** This does not support all Wahoo classes yet.

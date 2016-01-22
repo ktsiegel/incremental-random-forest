@@ -9,23 +9,27 @@ import org.apache.spark.mllib.linalg.{Vector, Vectors}
 
 /**
  * A smarter Random Forest Classifier which can add more trees to a model
- * that has already been trained.
+ * that has already been trained. This classifier wraps the existing Random Forest
+ * classifier class from Spark ML.
+ * TODO(Katie) Implement incremental data and features.
  */
 class WahooRandomForestClassifier(uid: String, wc: Option[WahooContext]) {
+  // This class is a wrapper for the existing Spark random forest implementation.
   val rf = new RandomForestClassifier(uid)
 
+  /**
+   * Wrappers for existing methods in the Spark random forest classifier.
+   * Eventually, these will go away after the refactor.
+   */
   def fit(dataset: DataFrame): RandomForestClassificationModel = rf.fit(dataset)
-
   def setLabelCol(label: String): this.type = {
     rf.setLabelCol(label)
     return this
   }
-
   def setFeaturesCol(label: String): this.type = {
     rf.setFeaturesCol(label)
     return this
   }
-
   def setNumTrees(num: Int): this.type = {
     rf.setNumTrees(num)
     return this
@@ -39,7 +43,7 @@ class WahooRandomForestClassifier(uid: String, wc: Option[WahooContext]) {
    * @param oldModel - the trained model that will be trained further
    * @param dataset - the dataset on which the model will be trained
    * @param addedTrees - the number of additional decision trees.
-   * @return a trained model
+   * @return an updated model that incorporates the new trees.
    */
   def fit(oldModel: RandomForestClassificationModel, dataset: DataFrame, addedTrees: Int): RandomForestClassificationModel = {
     rf.setNumTrees(addedTrees)
