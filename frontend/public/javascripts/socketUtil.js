@@ -6,6 +6,6 @@ socket.on('connection', function (data) {
 });
 socket.on('message', function(data) {
   // Append log message to DOM
-  var message = $('<div class="message">' + data.message + '</div>');
+  var message = $('<div class="message">' + data.content+ '</div>');
   $('#run-container').append(message);
 });
