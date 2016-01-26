@@ -11,7 +11,7 @@ import org.scalatest.{FunSuite, BeforeAndAfter}
  */
 class NodeLoggerSuite extends FunSuite with BeforeAndAfter {
   test("logging events to the central node.js server") {
-    TestBase.withContext("sample_name_of_db") { (wctx) =>
+    TestBase.withContext("wahootest")(false) { (wctx) =>
       wctx.wc.setWebAppUrl("http://localhost:3000")
 
       val training = TestBase.sqlContext.createDataFrame(Seq(

@@ -1,0 +1,38 @@
+/**
+ * Table displaying the models that have been trained.
+ */
+
+import React from 'react';
+import ModelTableRow from './ModelTableRow';
+
+class ModelTable extends React.Component {
+  constructor(props) {
+    super(props)
+  }
+  render() {
+    const modelTableRows = this.props.models.map((model) => {
+      return (
+        <ModelTableRow model={model}></ModelTableRow>
+      )
+    });
+
+    return (
+      <table className="table table-striped row">
+        <thead>
+          <tr className="row">
+            <th>UID</th>
+            <th>Weights</th>
+            <th>Intercept</th>
+            <th>ModelSpec</th>
+            <th>DataFrame ID</th>
+          </tr>
+        </thead>
+        <tbody>
+          {modelTableRows}
+        </tbody>
+      </table>
+    );
+  }
+}
+
+export default ModelTable

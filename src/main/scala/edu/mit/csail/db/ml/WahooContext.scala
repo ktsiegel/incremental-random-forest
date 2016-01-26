@@ -36,7 +36,7 @@ class WahooContext (sc: SparkContext,
    */
   def log(data: Seq[(String, String)]) = wc.get(WahooConfig.WebAppUrl.paramName) match {
     case Some(url) => {
-      val response = Http(url).postForm(data).asString
+      val response = Http(url + "/api/logs").postForm(data).asString
       if (response.isError &&
         wc.getBoolean(WahooConfig.LoggingErrorsFatal.paramName,
           WahooConfig.LoggingErrorsFatal.defaultValue)) {
