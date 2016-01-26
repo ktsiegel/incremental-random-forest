@@ -1,6 +1,7 @@
 'use strict';
 
-const db = require('monk')('localhost/wahootest');
+const constants = require('../config/constants');
+const db = require('monk')(constants.MONGO_URL);
 const models = db.get('models');
 
 /**

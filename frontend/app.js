@@ -7,7 +7,13 @@ const logger = require('morgan');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 
+const mongoose = require("mongoose");
+
+const constants = require("./config/constants");
 const routes = require('./routes/index');
+
+// Connect to MongoDB.
+mongoose.connect(constants.MONGO_URL);
 
 const app = express();
 

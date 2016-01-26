@@ -3,7 +3,7 @@
 const express = require('express');
 const router = express.Router();
 const io = require('../io');
-const runLogs = require('../models/runLogs')
+const LogMessageModel = require('../models/LogMessage')
 
 const modelUtils = require('../models/modelUtils');
 
@@ -12,9 +12,14 @@ router.get('/',  (req, res, next) => res.render('index', {}));
 
 // Receive log message from Spark WahooConnector
 router.post('/', (req, res, next) => {
-  runLogs.push(req.body);
-  io.emit('message', req.body);
-  res.send('received');
+  LogMessageModel.logMessage(req.body.message, (err, data) => {
+    if (err) {
+      res.status(500).send(err.toString());
+    } else {
+      io.emit("message");
+      res.send("received");
+    }
+  });
 });
 
 
@@ -31,7 +36,13 @@ router.get('/models', (req, res, next) => {
 
 // See the logs for all job runs
 router.get('/runs', (req, res, next) => {
-  res.render('runs', {'runLogs': runLogs});
+  LogMessageModel.getAllMessages((err, messages) => {
+    if (err) {
+      res.status(500).send(err.toString());
+    } else {
+      res.render('runs', {'runLogs': messages});
+    }
+  });
 });
 
 module.exports = router;
