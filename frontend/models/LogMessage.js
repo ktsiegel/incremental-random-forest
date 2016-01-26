@@ -5,9 +5,13 @@ const mongoose = require("mongoose");
 const LogMessageSchema = mongoose.Schema({
   'posted': {
     'type': Date,
-    'default': Date.now
+    'default': Date.now,
+    'required': true,
   },
-  'content': String
+  'content': {
+    'type': String,
+    'required': true,
+  }
 });
 
 /**

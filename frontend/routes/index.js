@@ -16,7 +16,7 @@ router.post('/', (req, res, next) => {
     if (err) {
       res.status(500).send(err.toString());
     } else {
-      io.emit("message");
+      io.emit("message", data);
       res.send("received");
     }
   });
