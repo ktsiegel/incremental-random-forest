@@ -1,5 +1,6 @@
 /**
- * Represents a row in the table of models.
+ * Represents a row in the table of models. This is displayed in a ModelTable,
+ * which is displayed in the "Models" page.
  */
 
 import React from 'react';
@@ -32,7 +33,7 @@ class ModelTableRow extends React.Component {
     // Truncate the data frame id because it's really long.
     const dataFrameNode = model.dataframe.slice(0, 10);
 
-    // Round the intercept.
+    // Round the intercept to 2 decimal places.
     const intercept = model.intercept.toFixed(2);
 
     return (

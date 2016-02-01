@@ -26,7 +26,10 @@ class Api {
     this.socketListeners = [];
   }
 
-  // Connect to the server's websocket port.
+  /**
+   * Connect to the server's websocket port. If we've already connected, then
+   * this function does nothing.
+   */
   connectToSocket() {
     // Don't connect if we already have.
     if (this.socketConnected) {
@@ -51,12 +54,26 @@ class Api {
     });
     this.socketConnected = true;
   }
+
+  /**
+   * Add a listener which is triggered when a new message comes in on the
+   * websocket. The argument, listener, will be executed as listener(message).
+   */
   addSocketListener(listener) {
     this.socketListeners.push(listener);
   }
+
+  /**
+   * Fetch the models that have been trained so far. The callback is executed
+   * as callback(err, data).
+   */
   getModels(callback) {
     $.get('/api/models', wrapCallback(callback));
   }
+
+  /**
+   * Fetch the log of messages. The callback is executed as callback(err, data).
+   */
   getLogs(callback) {
     $.get('/api/logs', wrapCallback(callback));
   }

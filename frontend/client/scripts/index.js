@@ -10,5 +10,5 @@ import App from '../routes/App';
 const routes = RouteConfigure(App);
 
 Router.run(routes, Router.HistoryLocation, function (Handler) {
-	React.render(<Handler/>, document.body);
+  React.render(<Handler/>, document.body);
 });

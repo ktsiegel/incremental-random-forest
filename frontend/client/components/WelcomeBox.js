@@ -1,7 +1,7 @@
 /**
- * Box welcoming users to Wahoo.
+ * Gray box displaying a message that welcomes users to Wahoo.
  */
- 
+
 import React from 'react';
 import Router from 'react-router';
 

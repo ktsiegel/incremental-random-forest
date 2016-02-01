@@ -50,16 +50,16 @@ app.use(express.static('public'));
 
 // Precompile common packages and cache them.
 app.get('/js/' + client_packages.common.bundle, browserify(client_packages.common.packages, {
-	cache: true,
-	precompile: true
+  cache: true,
+  precompile: true
 }));
 
 // Browserify and babelify (i.e. transpile JSX + ES6) JavaScripts.
 app.use('/js', browserify('./client/scripts', {
-	external: client_packages.common.packages,
-	transform: [babelify.configure({
-		plugins: ['object-assign']
-	})]
+  external: client_packages.common.packages,
+  transform: [babelify.configure({
+    plugins: ['object-assign']
+  })]
 }));
 
 // Set up API endpoints.
@@ -79,6 +79,6 @@ mongoose.connect(constants.MONGO_URL, (err) => {
 
   // On successful connect, launch the server.
   const server = http.listen(process.env.PORT || 3000, function() {
-  	console.log('\nServer ready on port %d\n', server.address().port);
+    console.log('\nServer ready on port %d\n', server.address().port);
   });
 });
