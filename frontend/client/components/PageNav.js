@@ -1,5 +1,6 @@
 /**
- * Navigation bar.
+ * The navigation bar which is always displayed at the top of the app.
+ * This is just a Twitter Bootstrap navigation bar.
  */
 
 import React from 'react';
