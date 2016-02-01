@@ -43,12 +43,14 @@ object TestBase {
     * @param dbName - Name of the database
     * @param fn - Function to execute with the WahooContext
     */
-  def withContext(dbName: String)(fn: WahooContext => Unit): Unit = {
+  def withContext(dbName: String)(shouldDropAfterTest: Boolean)(fn: WahooContext => Unit): Unit = {
     val wconf = new WahooConfig().setDbName(dbName).setDropFirst(true).setLoggingErrorsFatal(true)
     val wcontext = new WahooContext(sc, wconf)
 
     fn(wcontext)
-    wcontext.dropDb
+    if (shouldDropAfterTest) {
+      wcontext.dropDb
+    }
   }
 
   /**
@@ -57,7 +59,7 @@ object TestBase {
     */
   def withContext(fn: WahooContext => Unit): Unit = {
     val dbName = "test" + java.util.UUID.randomUUID().toString
-    withContext(dbName)(fn)
+    withContext(dbName)(true)(fn)
   }
 
   /**
