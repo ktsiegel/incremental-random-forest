@@ -1,5 +1,6 @@
 /**
- * Table displaying the models that have been trained.
+ * Table displaying the models that have been trained. It will be displayed on
+ * the "Models" page.
  */
 
 import React from 'react';
@@ -10,12 +11,14 @@ class ModelTable extends React.Component {
     super(props)
   }
   render() {
+    // Render a row for each model.
     const modelTableRows = this.props.models.map((model) => {
       return (
         <ModelTableRow model={model}></ModelTableRow>
       )
     });
 
+    // Display the table header and each of the rows.
     return (
       <table className="table table-striped row">
         <thead>
