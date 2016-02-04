@@ -148,7 +148,7 @@ object WahooForest {
     // Print out the results.
     println("Test Error = " + (1.0 - accuracy))
 
-    val forest2 = rf.fit(forest, training, 5)
+    val forest2 = rf.trainMore(forest, training, 5)
     val predictions2 = forest2.transform(testing)
     val accuracy2 = evaluator.evaluate(predictions2)
     println("Test Error = " + (1.0 - accuracy2))
