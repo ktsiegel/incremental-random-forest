@@ -5,7 +5,7 @@ import org.apache.spark.ml.classification.DecisionTreeClassificationModel
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.tree.{DecisionTreeModel, RandomForestParams, TreeClassifierParams, TreeEnsembleModel}
 import org.apache.spark.ml.util.{Identifiable, MetadataUtils}
-import org.apache.spark.ml.wahoo.{RandomForestClassificationModel, RandomForestClassifier}
+import org.apache.spark.ml.classification.{RandomForestClassificationModel, RandomForestClassifier}
 import org.apache.spark.mllib.linalg.{DenseVector, SparseVector, Vector, Vectors}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo}
@@ -21,8 +21,7 @@ import org.apache.spark.ml.tree.impl.WahooRandomForest
  * that has already been trained. This classifier wraps the existing Random Forest
  * classifier class from Spark ML.
  */
-class WahooRandomForestClassifier(override val uid: String)
-  extends RandomForestClassifier {
+implicit class WahooRandomForestClassifier(RandomForestClassifier) {
 
   def this() = this(Identifiable.randomUID("rfc"))
 
