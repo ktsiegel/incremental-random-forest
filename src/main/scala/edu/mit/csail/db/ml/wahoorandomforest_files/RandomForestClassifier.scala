@@ -15,9 +15,10 @@
  * limitations under the License.
  */
 
-package org.apache.spark.ml.classification
+package org.apache.spark.ml.wahoo
 
 import org.apache.spark.annotation.{Experimental, Since}
+import org.apache.spark.ml.classification.{ProbabilisticClassificationModel, DecisionTreeClassificationModel, RandomForestClassifier, ProbabilisticClassifier}
 import org.apache.spark.ml.param.ParamMap
 import org.apache.spark.ml.tree.{DecisionTreeModel, RandomForestParams, TreeClassifierParams, TreeEnsembleModel}
 import org.apache.spark.ml.tree.impl.RandomForest
@@ -114,6 +115,8 @@ with RandomForestParams with TreeClassifierParams {
         new RandomForestClassificationModel(trees, numFeatures, numClasses)
   }
 
+  def trainForOnline(dataset: DataFrame): RandomForestClassificationModel = train(dataset)
+
   def trainMore(oldModel: RandomForestClassificationModel, dataset: DataFrame, addedTrees: Int): RandomForestClassificationModel = train(dataset)
 
   @Since("1.4.1")
@@ -138,12 +141,13 @@ object RandomForestClassifier {
  * [[http://en.wikipedia.org/wiki/Random_forest  Random Forest]] model for classification.
  * It supports both binary and multiclass labels, as well as both continuous and categorical
  * features.
- * @param _trees  Decision trees in the ensemble.
+  *
+  * @param _trees  Decision trees in the ensemble.
  *               Warning: These have null parents.
  */
 @Since("1.4.0")
 @Experimental
-final class RandomForestClassificationModel private[ml] (
+class RandomForestClassificationModel private[ml] (
   @Since("1.5.0") override val uid: String,
   private val _trees: Array[DecisionTreeClassificationModel],
   val numFeatures: Int,
@@ -155,7 +159,8 @@ with TreeEnsembleModel with Serializable {
 
   /**
    * Construct a random forest classification model, with all trees weighted equally.
-   * @param trees  Component trees
+    *
+    * @param trees  Component trees
    */
   private[ml] def this(
     trees: Array[DecisionTreeClassificationModel],
