@@ -1,13 +1,12 @@
 package edu.mit.csail.db.ml.benchmarks.homesite
 
+import org.apache.spark.ml.classification.RandomForestClassifier
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.sql.{SQLContext, DataFrame}
 
-import org.apache.spark.ml.wahoo.WahooRandomForestClassifier
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, OneHotEncoder}
 import org.apache.spark.ml.{Pipeline, PipelineStage}
 import org.apache.spark.sql.types._
-import org.apache.spark.sql.functions._
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 
 /**
@@ -37,7 +36,7 @@ object WahooRandomForestIncremental {
       .load(trainingDataPath)
 
     // Convert label to double from int
-    val toDouble = udf[Double, Integer]( _.toDouble)
+    val toDouble = org.apache.spark.sql.functions.udf[Double, Int](intLabel => intLabel.asInstanceOf[Double])
     var df = dfInitial.withColumn("QuoteConversion_Flag", toDouble(dfInitial("QuoteConversion_Flag")))
 
     val indexer = new StringIndexer()
@@ -86,7 +85,7 @@ object WahooRandomForestIncremental {
     val assembler = new VectorAssembler()
       .setInputCols(numericFields.map(_.name).toArray ++ stringFields.map(_.name + "_vec"))
       .setOutputCol("features")
-    val rf = new WahooRandomForestClassifier()
+    val rf = new RandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
       .setNumTrees(10)
