@@ -1,6 +1,6 @@
 package edu.mit.csail.db.ml.benchmarks.homesite
 
-import org.apache.spark.ml.classification.RandomForestClassifier
+import org.apache.spark.ml.wahoo.WahooRandomForestClassifier
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.sql.{SQLContext, DataFrame}
 
@@ -85,7 +85,7 @@ object WahooRandomForestIncremental {
     val assembler = new VectorAssembler()
       .setInputCols(numericFields.map(_.name).toArray ++ stringFields.map(_.name + "_vec"))
       .setOutputCol("features")
-    val rf = new RandomForestClassifier()
+    val rf = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
       .setNumTrees(10)
