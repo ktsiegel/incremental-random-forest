@@ -143,6 +143,8 @@ private[ml] object WahooRandomForest extends Logging {
     val topNodes = Array.fill[LearningNode](numTrees)(LearningNode.emptyNode(nodeIndex = 1))
     Range(0, numTrees).foreach(treeIndex => nodeQueue.enqueue((treeIndex, topNodes(treeIndex))))
 
+    // Modification for online learning: we store aggregate statistics at
+    // leaf nodes only, so we can track advantageous splits in the future.
     while (nodeQueue.nonEmpty) {
       // Collect some nodes to split, and choose features for each node (if subsampling).
       // Each group of nodes may come from one or multiple trees, and at multiple levels.
