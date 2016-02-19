@@ -19,6 +19,7 @@ package org.apache.spark.ml.wahoo.tree
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.mllib.linalg.Vector
+import org.apache.spark.mllib.tree.impl.DTStatsAggregator
 import org.apache.spark.mllib.tree.impurity.ImpurityCalculator
 import org.apache.spark.mllib.tree.model.{InformationGainStats => OldInformationGainStats, Node => OldNode, Predict => OldPredict, ImpurityStats}
 
@@ -261,7 +262,8 @@ private[wahoo] class LearningNode(
                                   var rightChild: Option[LearningNode],
                                   var split: Option[Split],
                                   var isLeaf: Boolean,
-                                  var stats: ImpurityStats) extends Serializable {
+                                  var stats: ImpurityStats,
+                                  var aggStats: Option[DTStatsAggregator]) extends Serializable {
 
   /**
     * Convert this [[LearningNode]] to a regular [[Node]], and recurse on any children.
@@ -293,12 +295,12 @@ private[wahoo] object LearningNode {
              id: Int,
              isLeaf: Boolean,
              stats: ImpurityStats): LearningNode = {
-    new LearningNode(id, None, None, None, false, stats)
+    new LearningNode(id, None, None, None, false, stats, None)
   }
 
   /** Create an empty node with the given node index.  Values must be set later on. */
   def emptyNode(nodeIndex: Int): LearningNode = {
-    new LearningNode(nodeIndex, None, None, None, false, null)
+    new LearningNode(nodeIndex, None, None, None, false, null, None)
   }
 
   // The below indexing methods were copied from spark.mllib.tree.model.Node

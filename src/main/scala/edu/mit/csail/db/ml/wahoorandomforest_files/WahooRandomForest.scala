@@ -547,14 +547,20 @@ private[ml] object WahooRandomForest extends Logging {
 
     val nodeToBestSplits = partitionAggregates.reduceByKey((a, b) => a.merge(b)).map {
       case (nodeIndex, aggStats) =>
-        val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
-          Some(nodeToFeatures(nodeIndex))
-        }
+        if (nodes(nodeIndex).isLeaf) {
+          // Collect aggregate statistics for leaves
+          (nodeIndex, (None, None, aggStats))
+        } else {
+          // Find best splits for non-leaves only
+          val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
+            Some(nodeToFeatures(nodeIndex))
+          }
 
-        // find best split for each node
-        val (split: Split, stats: ImpurityStats) =
-          binsToBestSplitRandomized(aggStats, splits, featuresForNode, nodes(nodeIndex))
-        (nodeIndex, (split, stats))
+          // find best split for each node
+          val (split: Split, stats: ImpurityStats) =
+            binsToBestSplitRandomized(aggStats, splits, featuresForNode, nodes(nodeIndex))
+          (nodeIndex, (split, stats, aggStats))
+        }
     }.collectAsMap()
 
     timer.stop("chooseSplits")
@@ -571,18 +577,22 @@ private[ml] object WahooRandomForest extends Logging {
         val nodeIndex = node.id
         val nodeInfo = treeToNodeToIndexInfo(treeIndex)(nodeIndex)
         val aggNodeIndex = nodeInfo.nodeIndexInGroup
-        val (split: Split, stats: ImpurityStats) =
+        // TODO option[]
+        val (split: Split, stats: ImpurityStats, aggStats: DTStatsAggregator) =
           nodeToBestSplits(aggNodeIndex)
         logDebug("best split = " + split)
 
         // Extract info for this node.  Create children if not leaf.
-        val isLeaf =
+        val isLeaf = node.isLeaf ||
           (stats.gain <= 0) || (LearningNode.indexToLevel(nodeIndex) == metadata.maxDepth)
         node.isLeaf = isLeaf
         node.stats = stats
         logDebug("Node = " + node)
 
-        if (!isLeaf) {
+        if (isLeaf) {
+          node.aggStats = Some(aggStats)
+        }
+        else {
           node.split = Some(split)
           val childIsLeaf = (LearningNode.indexToLevel(nodeIndex) + 1) == metadata.maxDepth
           val leftChildIsLeaf = childIsLeaf || (stats.leftImpurity == 0.0)
@@ -599,13 +609,12 @@ private[ml] object WahooRandomForest extends Logging {
             nodeIdUpdaters(treeIndex).put(nodeIndex, nodeIndexUpdater)
           }
 
-          // enqueue left child and right child if they are not leaves
-          if (!leftChildIsLeaf) {
-            nodeQueue.enqueue((treeIndex, node.leftChild.get))
-          }
-          if (!rightChildIsLeaf) {
-            nodeQueue.enqueue((treeIndex, node.rightChild.get))
-          }
+          // Enqueue both children. If a child is not a leaf, we should recurse.
+          // If the child is a leaf, then we still add it back to the queue. On the
+          // next iteration, we just collect aggregate stats for this leaf child
+          // without calculating any splits.
+          nodeQueue.enqueue((treeIndex, node.leftChild.get))
+          nodeQueue.enqueue((treeIndex, node.rightChild.get))
 
           logDebug("leftChildIndex = " + node.leftChild.get.id +
             ", impurity = " + stats.leftImpurity)
