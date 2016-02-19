@@ -95,10 +95,10 @@ object WahooRandomForestIncremental {
 
     // Model 1 - trained on first batch of data
     val forest = pipeline.fit(train1)
-//     var predictions = forest.transform(testing)
-//     var accuracy = evaluator.evaluate(predictions)
-//     println("test error after being trained on data batch 1: " + (1.0 - accuracy))
-//
+    var predictions = forest.transform(testing)
+    var accuracy = evaluator.evaluate(predictions)
+    println("test error after being trained on data batch 1: " + (1.0 - accuracy))
+
 //     // Model 2 - trained using more trees
 //     rf.setNumTrees(100)
 //     predictions = forest.transform(testing)
