@@ -263,7 +263,32 @@ private[wahoo] class LearningNode(
                                   var split: Option[Split],
                                   var isLeaf: Boolean,
                                   var stats: ImpurityStats,
-                                  var aggStats: Option[DTStatsAggregator]) extends Serializable {
+                                  var aggStats: Option[DTStatsAggregator]) extends Node {
+
+  var subtreeDepthVal: Int = -1
+  var subtreeToStringVal: String = s"Error: should not be called on a LearningNode"
+  var numDescendantsVal: Int = -1
+  var predictImplVal: LeafNode = null
+  var maxSplitsFeatureIndexVal: Int = -1
+  var gain: Double = -1.0
+
+  var prediction: Double = -1.0
+
+  var impurity: Double = -1.0
+
+  override private[wahoo] def subtreeDepth: Int = subtreeDepthVal
+
+  private[ml] var impurityStats: ImpurityCalculator = null
+
+  override private[ml] def toOld(id: Int): OldNode = null
+
+  override private[wahoo] def subtreeToString(indentFactor: Int = 0): String = subtreeToStringVal
+
+  override private[wahoo] def numDescendants: Int = numDescendantsVal
+
+  override private[ml] def predictImpl(features: Vector): LeafNode = predictImplVal
+
+  override private[ml] def maxSplitFeatureIndex(): Int = maxSplitsFeatureIndexVal
 
   /**
     * Convert this [[LearningNode]] to a regular [[Node]], and recurse on any children.
@@ -286,6 +311,33 @@ private[wahoo] class LearningNode(
     }
   }
 
+  def makeLeafNode: Unit = {
+    // Here we want to keep same behavior with the old mllib.DecisionTreeModel
+    prediction = stats.impurityCalculator.predict
+    impurityStats = stats.impurityCalculator
+    if (stats.valid) {
+      impurity = stats.impurity
+    } else {
+      impurity = -1.0
+    }
+  }
+
+  def makeInternalNode: Unit = {
+    prediction = stats.impurityCalculator.predict
+    impurity = stats.impurity
+    gain = stats.gain
+    if (leftChild.get.isLeaf) {
+      leftChild.get.makeLeafNode
+    } else {
+      leftChild.get.makeInternalNode
+    }
+    if (rightChild.get.isLeaf) {
+      rightChild.get.makeLeafNode
+    } else {
+      rightChild.get.makeInternalNode
+    }
+    impurityStats = stats.impurityCalculator
+  }
 }
 
 private[wahoo] object LearningNode {
