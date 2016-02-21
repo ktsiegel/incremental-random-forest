@@ -45,6 +45,7 @@ object WahooRandomForestIncremental {
 
     // Split into training and testing data
     val Array(train1, train2, train3, train4, train5, train6, train7, testing) = df.randomSplit(Array(0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2))
+    // val Array(train1, testing) = df.randomSplit(Array(0.8,0.2))
 
     // Evaluator
     val evaluator = new MulticlassClassificationEvaluator()
@@ -83,15 +84,17 @@ object WahooRandomForestIncremental {
         .setOutputCol(entry.name + "_vec")
     )
     val assembler = new VectorAssembler()
-      .setInputCols(numericFields.map(_.name).toArray ++ stringFields.map(_.name + "_vec"))
+      .setInputCols(numericFields.map(_.name).toArray) // ++ stringFields.map(_.name + "_vec"))
       .setOutputCol("features")
     val rf = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(10)
+      .setNumTrees(2)
+      .setMaxDepth(5)
 
     val stages = (indexers :+ indexer) ++ encoders :+ assembler :+ rf
     val pipeline = new Pipeline().setStages(stages)
+    // val pipeline = new Pipeline().setStages(Array(indexer, assembler, rf))
 
     // Model 1 - trained on first batch of data
     val forest = pipeline.fit(train1)

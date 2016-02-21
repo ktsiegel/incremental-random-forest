@@ -108,6 +108,265 @@ private[ml] object Node {
   }
 }
 
+
+
+/**
+  * Version of a node used in learning.  This uses vars so that we can modify nodes as we split the
+  * tree by adding children, etc.
+  *
+  * For now, we use node IDs.  These will be kept internal since we hope to remove node IDs
+  * in the future, or at least change the indexing (so that we can support much deeper trees).
+  *
+  * This node can either be:
+  *  - a leaf node, with leftChild, rightChild, split set to null, or
+  *  - an internal node, with all values set
+  *
+  * @param id  We currently use the same indexing as the old implementation in
+  *            [[org.apache.spark.mllib.tree.model.Node]], but this will change later.
+  * @param isLeaf  Indicates whether this node will definitely be a leaf in the learned tree,
+  *                so that we do not need to consider splitting it further.
+  * @param stats  Impurity statistics for this node.
+  */
+private[wahoo] class LearningNode(
+                                  var id: Int,
+                                  var leftChild: Option[LearningNode],
+                                  var rightChild: Option[LearningNode],
+                                  var split: Option[Split],
+                                  var isLeaf: Boolean,
+                                  var stats: ImpurityStats,
+                                  var aggStats: Option[DTStatsAggregator]) extends Node {
+
+  var isDone = false
+
+  var gain: Double = -1.0
+
+  var prediction: Double = -1.0
+
+  var impurity: Double = -1.0
+
+  private[ml] var impurityStats: ImpurityCalculator = null
+
+  override private[wahoo] def subtreeDepth: Int = {
+    assert(isDone)
+    if (isLeaf) {
+      0
+    } else {
+      1 + math.max(leftChild.get.subtreeDepth, rightChild.get.subtreeDepth)
+    }
+  }
+
+  override private[ml] def toOld(id: Int): OldNode = {
+    assert(isDone)
+    if (isLeaf) {
+      new OldNode(id, new OldPredict(prediction, prob = impurityStats.prob(prediction)),
+        impurity, isLeaf, None, None, None, None)
+    } else {
+      assert(id.toLong * 2 < Int.MaxValue, "Decision Tree could not be converted from new to old API"
+      + " since the old API does not support deep trees.")
+      new OldNode(id, new OldPredict(prediction, prob = impurityStats.prob(prediction)), impurity,
+      isLeaf = false, Some(split.get.toOld), Some(leftChild.get.toOld(OldNode.leftChildIndex(id))),
+      Some(rightChild.get.toOld(OldNode.rightChildIndex(id))),
+      Some(new OldInformationGainStats(gain, impurity, leftChild.get.impurity, rightChild.get.impurity,
+        new OldPredict(leftChild.get.prediction, prob = 0.0),
+        new OldPredict(rightChild.get.prediction, prob = 0.0))))
+    }
+  }
+
+  override private[wahoo] def subtreeToString(indentFactor: Int = 0): String = {
+    assert(isDone)
+    if (isLeaf) {
+      val prefix: String = " " * indentFactor
+      prefix + s"Predict: $prediction\n"
+    } else {
+      split match {
+        case Some(s) => {
+          val prefix: String = " " * indentFactor
+          prefix + s"If (${splitToString(s, left = true)})\n" +
+          leftChild.get.subtreeToString(indentFactor + 1) +
+          prefix + s"Else (${splitToString(s, left = false)})\n" +
+          rightChild.get.subtreeToString(indentFactor + 1)
+        }
+        case None => throw new Exception(s"Error in subtreeToString.")
+      }
+    }
+  }
+
+  private def splitToString(s: Split, left: Boolean): String = {
+    assert(isDone)
+    if (!isLeaf) {
+      val featureStr = s"feature ${s.featureIndex}"
+      s match {
+        case contSplit: ContinuousSplit =>
+          if (left) {
+            s"$featureStr <= ${contSplit.threshold}"
+          } else {
+            s"$featureStr > ${contSplit.threshold}"
+          }
+        case catSplit: CategoricalSplit =>
+          val categoriesStr = catSplit.leftCategories.mkString("{", ",", "}")
+          if (left) {
+            s"$featureStr in $categoriesStr"
+          } else {
+            s"$featureStr not in $categoriesStr"
+          }
+      }
+    } else {
+      ""
+    }
+  }
+
+  override private[wahoo] def numDescendants: Int = {
+    assert(isDone)
+    if (isLeaf) {
+      0
+    } else {
+      2 + leftChild.get.numDescendants + rightChild.get.numDescendants
+    }
+  }
+
+  override private[ml] def predictImpl(features: Vector): LeafNode = {
+    assert(isDone)
+    if (isLeaf) {
+      if (stats.valid) {
+        new LeafNode(prediction, impurity, impurityStats)
+      } else {
+        new LeafNode(stats.impurityCalculator.predict, -1.0, stats.impurityCalculator)
+      }
+    } else {
+      split match {
+        case Some(s) => {
+          if (s.shouldGoLeft(features)) {
+            leftChild.get.predictImpl(features)
+          } else {
+            rightChild.get.predictImpl(features)
+          }
+        }
+        case None => {
+          throw new Exception(s"Error in predictImpl.")
+        }
+      }
+    }
+  }
+
+  override private[ml] def maxSplitFeatureIndex(): Int = {
+    assert(isDone)
+    if (isLeaf) {
+      -1
+    } else {
+      math.max(split.get.featureIndex,
+        math.max(leftChild.get.maxSplitFeatureIndex(), rightChild.get.maxSplitFeatureIndex()))
+    }
+  }
+
+  override def toString: String = {
+    if (isLeaf) {
+      s"LeafNode(prediction = $prediction, impurity = $impurity)"
+    } else {
+      s"InternalNode(prediction = $prediction, impurity = $impurity, split = $split"
+    }
+  }
+
+  def makeNode: LearningNode = {
+    if (!isLeaf) {
+      makeInternalNode
+    }
+    isDone = true
+    if (stats.valid) {
+      prediction = stats.impurityCalculator.predict
+      impurity = stats.impurity
+      impurityStats = stats.impurityCalculator
+    }
+    return this
+  }
+
+  def makeInternalNode: Unit = {
+    gain = stats.gain
+    leftChild.get.makeNode
+    rightChild.get.makeNode
+  }
+}
+
+private[wahoo] object LearningNode {
+
+  /** Create a node with some of its fields set. */
+  def apply(
+             id: Int,
+             isLeaf: Boolean,
+             stats: ImpurityStats): LearningNode = {
+    new LearningNode(id, None, None, None, false, stats, None)
+  }
+
+  /** Create an empty node with the given node index.  Values must be set later on. */
+  def emptyNode(nodeIndex: Int): LearningNode = {
+    new LearningNode(nodeIndex, None, None, None, false, null, None)
+  }
+
+  // The below indexing methods were copied from spark.mllib.tree.model.Node
+
+  /**
+    * Return the index of the left child of this node.
+    */
+  def leftChildIndex(nodeIndex: Int): Int = nodeIndex << 1
+
+  /**
+    * Return the index of the right child of this node.
+    */
+  def rightChildIndex(nodeIndex: Int): Int = (nodeIndex << 1) + 1
+
+  /**
+    * Get the parent index of the given node, or 0 if it is the root.
+    */
+  def parentIndex(nodeIndex: Int): Int = nodeIndex >> 1
+
+  /**
+    * Return the level of a tree which the given node is in.
+    */
+  def indexToLevel(nodeIndex: Int): Int = if (nodeIndex == 0) {
+    throw new IllegalArgumentException(s"0 is not a valid node index.")
+  } else {
+    java.lang.Integer.numberOfTrailingZeros(java.lang.Integer.highestOneBit(nodeIndex))
+  }
+
+  /**
+    * Returns true if this is a left child.
+    * Note: Returns false for the root.
+    */
+  def isLeftChild(nodeIndex: Int): Boolean = nodeIndex > 1 && nodeIndex % 2 == 0
+
+  /**
+    * Return the maximum number of nodes which can be in the given level of the tree.
+    *
+    * @param level  Level of tree (0 = root).
+    */
+  def maxNodesInLevel(level: Int): Int = 1 << level
+
+  /**
+    * Return the index of the first node in the given level.
+    *
+    * @param level  Level of tree (0 = root).
+    */
+  def startIndexInLevel(level: Int): Int = 1 << level
+
+  /**
+    * Traces down from a root node to get the node with the given node index.
+    * This assumes the node exists.
+    */
+  def getNode(nodeIndex: Int, rootNode: LearningNode): LearningNode = {
+    var tmpNode: LearningNode = rootNode
+    var levelsToGo = indexToLevel(nodeIndex)
+    while (levelsToGo > 0) {
+      if ((nodeIndex & (1 << levelsToGo - 1)) == 0) {
+        tmpNode = tmpNode.leftChild.asInstanceOf[LearningNode]
+      } else {
+        tmpNode = tmpNode.rightChild.asInstanceOf[LearningNode]
+      }
+      levelsToGo -= 1
+    }
+    tmpNode
+  }
+
+}
+
 /**
   * :: DeveloperApi ::
   * Decision tree leaf node.
@@ -142,6 +401,7 @@ final class LeafNode private[ml] (
 
   override private[ml] def maxSplitFeatureIndex(): Int = -1
 }
+
 
 /**
   * :: DeveloperApi ::
@@ -239,184 +499,3 @@ private object InternalNode {
   }
 }
 
-/**
-  * Version of a node used in learning.  This uses vars so that we can modify nodes as we split the
-  * tree by adding children, etc.
-  *
-  * For now, we use node IDs.  These will be kept internal since we hope to remove node IDs
-  * in the future, or at least change the indexing (so that we can support much deeper trees).
-  *
-  * This node can either be:
-  *  - a leaf node, with leftChild, rightChild, split set to null, or
-  *  - an internal node, with all values set
-  *
-  * @param id  We currently use the same indexing as the old implementation in
-  *            [[org.apache.spark.mllib.tree.model.Node]], but this will change later.
-  * @param isLeaf  Indicates whether this node will definitely be a leaf in the learned tree,
-  *                so that we do not need to consider splitting it further.
-  * @param stats  Impurity statistics for this node.
-  */
-private[wahoo] class LearningNode(
-                                  var id: Int,
-                                  var leftChild: Option[LearningNode],
-                                  var rightChild: Option[LearningNode],
-                                  var split: Option[Split],
-                                  var isLeaf: Boolean,
-                                  var stats: ImpurityStats,
-                                  var aggStats: Option[DTStatsAggregator]) extends Node {
-
-  var subtreeDepthVal: Int = -1
-  var subtreeToStringVal: String = s"Error: should not be called on a LearningNode"
-  var numDescendantsVal: Int = -1
-  var predictImplVal: LeafNode = null
-  var maxSplitsFeatureIndexVal: Int = -1
-  var gain: Double = -1.0
-
-  var prediction: Double = -1.0
-
-  var impurity: Double = -1.0
-
-  override private[wahoo] def subtreeDepth: Int = subtreeDepthVal
-
-  private[ml] var impurityStats: ImpurityCalculator = null
-
-  override private[ml] def toOld(id: Int): OldNode = null
-
-  override private[wahoo] def subtreeToString(indentFactor: Int = 0): String = subtreeToStringVal
-
-  override private[wahoo] def numDescendants: Int = numDescendantsVal
-
-  override private[ml] def predictImpl(features: Vector): LeafNode = predictImplVal
-
-  override private[ml] def maxSplitFeatureIndex(): Int = maxSplitsFeatureIndexVal
-
-  /**
-    * Convert this [[LearningNode]] to a regular [[Node]], and recurse on any children.
-    */
-  def toNode: Node = {
-    if (leftChild.nonEmpty) {
-      assert(rightChild.nonEmpty && split.nonEmpty && stats != null,
-        "Unknown error during Decision Tree learning.  Could not convert LearningNode to Node.")
-      new InternalNode(stats.impurityCalculator.predict, stats.impurity, stats.gain,
-        leftChild.get.toNode, rightChild.get.toNode, split.get, stats.impurityCalculator)
-    } else {
-      if (stats.valid) {
-        new LeafNode(stats.impurityCalculator.predict, stats.impurity,
-          stats.impurityCalculator)
-      } else {
-        // Here we want to keep same behavior with the old mllib.DecisionTreeModel
-        new LeafNode(stats.impurityCalculator.predict, -1.0, stats.impurityCalculator)
-      }
-
-    }
-  }
-
-  def makeLeafNode: Unit = {
-    // Here we want to keep same behavior with the old mllib.DecisionTreeModel
-    prediction = stats.impurityCalculator.predict
-    impurityStats = stats.impurityCalculator
-    if (stats.valid) {
-      impurity = stats.impurity
-    } else {
-      impurity = -1.0
-    }
-  }
-
-  def makeInternalNode: Unit = {
-    prediction = stats.impurityCalculator.predict
-    impurity = stats.impurity
-    gain = stats.gain
-    if (leftChild.get.isLeaf) {
-      leftChild.get.makeLeafNode
-    } else {
-      leftChild.get.makeInternalNode
-    }
-    if (rightChild.get.isLeaf) {
-      rightChild.get.makeLeafNode
-    } else {
-      rightChild.get.makeInternalNode
-    }
-    impurityStats = stats.impurityCalculator
-  }
-}
-
-private[wahoo] object LearningNode {
-
-  /** Create a node with some of its fields set. */
-  def apply(
-             id: Int,
-             isLeaf: Boolean,
-             stats: ImpurityStats): LearningNode = {
-    new LearningNode(id, None, None, None, false, stats, None)
-  }
-
-  /** Create an empty node with the given node index.  Values must be set later on. */
-  def emptyNode(nodeIndex: Int): LearningNode = {
-    new LearningNode(nodeIndex, None, None, None, false, null, None)
-  }
-
-  // The below indexing methods were copied from spark.mllib.tree.model.Node
-
-  /**
-    * Return the index of the left child of this node.
-    */
-  def leftChildIndex(nodeIndex: Int): Int = nodeIndex << 1
-
-  /**
-    * Return the index of the right child of this node.
-    */
-  def rightChildIndex(nodeIndex: Int): Int = (nodeIndex << 1) + 1
-
-  /**
-    * Get the parent index of the given node, or 0 if it is the root.
-    */
-  def parentIndex(nodeIndex: Int): Int = nodeIndex >> 1
-
-  /**
-    * Return the level of a tree which the given node is in.
-    */
-  def indexToLevel(nodeIndex: Int): Int = if (nodeIndex == 0) {
-    throw new IllegalArgumentException(s"0 is not a valid node index.")
-  } else {
-    java.lang.Integer.numberOfTrailingZeros(java.lang.Integer.highestOneBit(nodeIndex))
-  }
-
-  /**
-    * Returns true if this is a left child.
-    * Note: Returns false for the root.
-    */
-  def isLeftChild(nodeIndex: Int): Boolean = nodeIndex > 1 && nodeIndex % 2 == 0
-
-  /**
-    * Return the maximum number of nodes which can be in the given level of the tree.
-    *
-    * @param level  Level of tree (0 = root).
-    */
-  def maxNodesInLevel(level: Int): Int = 1 << level
-
-  /**
-    * Return the index of the first node in the given level.
-    *
-    * @param level  Level of tree (0 = root).
-    */
-  def startIndexInLevel(level: Int): Int = 1 << level
-
-  /**
-    * Traces down from a root node to get the node with the given node index.
-    * This assumes the node exists.
-    */
-  def getNode(nodeIndex: Int, rootNode: LearningNode): LearningNode = {
-    var tmpNode: LearningNode = rootNode
-    var levelsToGo = indexToLevel(nodeIndex)
-    while (levelsToGo > 0) {
-      if ((nodeIndex & (1 << levelsToGo - 1)) == 0) {
-        tmpNode = tmpNode.leftChild.asInstanceOf[LearningNode]
-      } else {
-        tmpNode = tmpNode.rightChild.asInstanceOf[LearningNode]
-      }
-      levelsToGo -= 1
-    }
-    tmpNode
-  }
-
-}

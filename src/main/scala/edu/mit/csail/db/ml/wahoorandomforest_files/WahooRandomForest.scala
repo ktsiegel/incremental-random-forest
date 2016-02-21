@@ -182,18 +182,18 @@ private[ml] object WahooRandomForest extends Logging {
       case Some(uid) =>
         if (strategy.algo == OldAlgo.Classification) {
           topNodes.map { rootNode =>
-            new DecisionTreeClassificationModel(uid, rootNode.toNode, strategy.getNumClasses)
+            new DecisionTreeClassificationModel(uid, rootNode.makeNode, strategy.getNumClasses)
           }
         } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.toNode))
+          topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.makeNode))
         }
       case None =>
         if (strategy.algo == OldAlgo.Classification) {
           topNodes.map { rootNode =>
-            new DecisionTreeClassificationModel(rootNode.toNode, strategy.getNumClasses)
+            new DecisionTreeClassificationModel(rootNode.makeNode, strategy.getNumClasses)
           }
         } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.toNode))
+          topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.makeNode))
         }
     }
   }
