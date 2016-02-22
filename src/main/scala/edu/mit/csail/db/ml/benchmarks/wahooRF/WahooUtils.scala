@@ -1,8 +1,9 @@
 package edu.mit.csail.db.ml.benchmarks.wahoo
 
+import org.apache.spark.ml.{Transformer, Estimator, PipelineStage}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
-import org.apache.spark.ml.feature.StringIndexer
-import org.apache.spark.sql.types.{DoubleType, IntegerType}
+import org.apache.spark.ml.feature.{VectorAssembler, OneHotEncoder, StringIndexer}
+import org.apache.spark.sql.types.{StringType, StructField, DoubleType, IntegerType}
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.sql.{SQLContext, DataFrame}
 
@@ -43,7 +44,7 @@ object WahooUtils {
       .setMetricName("precision")
   }
 
-  def columnsIntToDouble(dataset: DataFrame): DataFrame = {
+  def processIntColumns(dataset: DataFrame): DataFrame = {
     var df = dataset
     val toDouble = org.apache.spark.sql.functions.udf[Double, Int](intLabel => intLabel.asInstanceOf[Double])
     df.schema.foreach( entry => {
@@ -57,4 +58,59 @@ object WahooUtils {
     df
   }
 
+  private def makeIndexers(fields: Seq[StructField]): Array[PipelineStage] = {
+    fields.toArray.map( (entry) =>
+      new StringIndexer()
+        .setInputCol(entry.name)
+        .setOutputCol(entry.name + "_index")
+    )
+  }
+
+  private def makeEncoders(fields: Seq[StructField]): Array[PipelineStage] = {
+    fields.toArray.map( (entry) =>
+      new OneHotEncoder()
+        .setInputCol(entry.name + "_index")
+        .setOutputCol(entry.name + "_vec")
+    )
+  }
+
+  def processStringColumns(dataset: DataFrame, fields: Seq[StructField]): Array[PipelineStage] = {
+    makeIndexers(fields) ++ makeEncoders(fields)
+  }
+
+  def getNumericFields(dataset: DataFrame): Seq[StructField] = {
+    dataset.schema.filter( entry =>
+      entry.dataType == IntegerType ||
+      entry.dataType == DoubleType)
+  }
+
+  def getStringFields(dataset: DataFrame, names: Option[Array[String]]): Seq[StructField] = {
+    names match {
+      case Some(n) => {
+        dataset.schema.filter(entry => entry.dataType == StringType &&
+          n.contains(entry.name))
+      }
+      case None => {
+        dataset.schema.filter(entry => entry.dataType == StringType)
+      }
+    }
+  }
+
+  def createAssembler(fields: Array[String]): VectorAssembler = {
+    new VectorAssembler()
+      .setInputCols(fields)
+      .setOutputCol("features")
+  }
+
+  def processDataFrame(dataset: DataFrame, stages: Array[PipelineStage]): DataFrame = {
+    var df = dataset
+    stages.foreach(stage =>
+      stage match {
+        case estimator: Estimator[_] =>
+          df = estimator.fit(df).transform(df)
+        case transformer: Transformer =>
+          df = transformer.transform(df)
+    })
+    df
+  }
 }
