@@ -22,6 +22,8 @@ import org.apache.spark.mllib.linalg.Vector
 import org.apache.spark.mllib.tree.impl.DTStatsAggregator
 import org.apache.spark.mllib.tree.impurity.ImpurityCalculator
 import org.apache.spark.mllib.tree.model.{InformationGainStats => OldInformationGainStats, Node => OldNode, Predict => OldPredict, ImpurityStats}
+import scala.collection.mutable
+import scala.collection.mutable.ArrayBuffer
 
 /**
   * :: DeveloperApi ::
@@ -267,14 +269,16 @@ private[wahoo] class LearningNode(
   }
 
   def makeNode: LearningNode = {
-    if (!isLeaf) {
-      makeInternalNode
-    }
-    isDone = true
-    if (stats.valid) {
-      prediction = stats.impurityCalculator.predict
-      impurity = stats.impurity
-      impurityStats = stats.impurityCalculator
+    if (!isDone) {
+      if (!isLeaf) {
+        makeInternalNode
+      }
+      isDone = true
+      if (stats.valid) {
+        prediction = stats.impurityCalculator.predict
+        impurity = stats.impurity
+        impurityStats = stats.impurityCalculator
+      }
     }
     return this
   }
@@ -365,6 +369,27 @@ private[wahoo] object LearningNode {
     tmpNode
   }
 
+  def getLeaves(rootNode: LearningNode): Array[LearningNode] = {
+    val queue = new mutable.Queue[(LearningNode)]()
+    var leaves = new ArrayBuffer[LearningNode]()
+    queue.enqueue(rootNode)
+    while (queue.nonEmpty) {
+      val currNode: LearningNode = queue.dequeue()
+      if (currNode.isLeaf) {
+        currNode.isDone = false
+        currNode.isLeaf = false
+        leaves += currNode
+      } else {
+        if (!currNode.leftChild.isEmpty) {
+          queue.enqueue(currNode.leftChild.get)
+        }
+        if (!currNode.rightChild.isEmpty) {
+          queue.enqueue(currNode.rightChild.get)
+        }
+      }
+    }
+    leaves.toArray
+  }
 }
 
 /**

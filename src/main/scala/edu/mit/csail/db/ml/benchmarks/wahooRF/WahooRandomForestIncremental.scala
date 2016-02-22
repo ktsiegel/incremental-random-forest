@@ -1,11 +1,11 @@
-package edu.mit.csail.db.ml.benchmarks.homesite
+package edu.mit.csail.db.ml.benchmarks.wahoo
 
-import org.apache.spark.ml.wahoo.WahooRandomForestClassifier
+import org.apache.spark.ml.wahoo.{RandomForestClassificationModel, WahooRandomForestClassifier}
 import org.apache.spark.{SparkContext, SparkConf}
-import org.apache.spark.sql.{SQLContext, DataFrame}
+import org.apache.spark.sql.{DataFrame, SQLContext}
 
 import org.apache.spark.ml.feature.{StringIndexer, VectorAssembler, OneHotEncoder}
-import org.apache.spark.ml.{Pipeline, PipelineStage}
+import org.apache.spark.ml.{Estimator, Transformer, PipelineStage}
 import org.apache.spark.sql.types._
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 
@@ -20,52 +20,15 @@ object WahooRandomForestIncremental {
       args(0)
     }
 
-    // set up contexts
-    val conf = new SparkConf()
-      .setAppName("Homesite")
-      .setMaster("local[2]")
-      .set("spark.driver.allowMultipleContexts", "true")
-    val sc = new SparkContext(conf)
-    val sqlContext = new SQLContext(sc)
+    var df: DataFrame = WahooUtils.readData(trainingDataPath, "Wahoo", "local[2]")
+    val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
+    val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
+    df = WahooUtils.columnsIntToDouble(df)
 
-    // Read data and convert to dataframe
-    val dfInitial = sqlContext.read
-      .format("com.databricks.spark.csv")
-      .option("header", "true") // use first line of file as header
-      .option("inferSchema", "true") // automatically infer data types
-      .load(trainingDataPath)
-
-    // Convert label to double from int
-    val toDouble = org.apache.spark.sql.functions.udf[Double, Int](intLabel => intLabel.asInstanceOf[Double])
-    var df = dfInitial.withColumn("QuoteConversion_Flag", toDouble(dfInitial("QuoteConversion_Flag")))
-
-    val indexer = new StringIndexer()
-      .setInputCol("QuoteConversion_Flag")
-      .setOutputCol("label")
-
-    // Split into training and testing data
-    val Array(train1, train2, train3, train4, train5, train6, train7, testing) = df.randomSplit(Array(0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2))
-    // val Array(train1, testing) = df.randomSplit(Array(0.8,0.2))
-
-    // Evaluator
-    val evaluator = new MulticlassClassificationEvaluator()
-      .setLabelCol("QuoteConversion_Flag")
-      .setPredictionCol("prediction")
-      .setMetricName("precision")
-
-    // Cast all int fields to double fields
     val numericFields = df.schema.filter(
       entry => entry.dataType == IntegerType ||
         entry.dataType == DoubleType
     )
-    df.schema.foreach{ (entry) => {
-      entry.dataType match {
-        case IntegerType => {
-          df = df.withColumn(entry.name, toDouble(df(entry.name)))
-        }
-        case _ => {}
-      }
-    }}
 
     // Create new pipeline
     val stringFields = df.schema.filter(entry => entry.dataType == StringType &&
@@ -78,7 +41,7 @@ object WahooRandomForestIncremental {
         .setInputCol(entry.name)
         .setOutputCol(entry.name + "_index")
     )
-    var encoders: Array[PipelineStage] = stringFields.toArray.map( (entry) =>
+    val encoders: Array[PipelineStage] = stringFields.toArray.map( (entry) =>
       new OneHotEncoder()
         .setInputCol(entry.name + "_index")
         .setOutputCol(entry.name + "_vec")
@@ -89,25 +52,33 @@ object WahooRandomForestIncremental {
     val rf = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(2)
-      .setMaxDepth(5)
+      .setNumTrees(5)
 
-    val stages = (indexers :+ indexer) ++ encoders :+ assembler :+ rf
-    val pipeline = new Pipeline().setStages(stages)
-    // val pipeline = new Pipeline().setStages(Array(indexer, assembler, rf))
+    val stages = (indexers :+ indexer) ++ encoders :+ assembler
+    stages.foreach(stage =>
+      stage match {
+        case estimator: Estimator[_] =>
+          df = estimator.fit(df).transform(df)
+        case transformer: Transformer =>
+          df = transformer.transform(df)
+    })
+
+    // Split into training and testing data
+    val Array(train1, train2, train3, train4, train5, train6, train7, testing) = df.randomSplit(Array(0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2))
 
     // Model 1 - trained on first batch of data
-    val forest = pipeline.fit(train1)
-    var predictions = forest.transform(testing)
+    val model1: RandomForestClassificationModel = rf.fit(train1)
+    var predictions = model1.transform(testing)
     var accuracy = evaluator.evaluate(predictions)
     println("test error after being trained on data batch 1: " + (1.0 - accuracy))
 
-//     // Model 2 - trained using more trees
-//     rf.setNumTrees(100)
-//     predictions = forest.transform(testing)
-//     accuracy = evaluator.evaluate(predictions)
-//     println("test error after adding more trees: " + (1.0 - accuracy))
-//
+    // Model 2 - trained using more trees
+    val model2 = rf.addTrees(model1, train1, 10)
+    predictions = model2.transform(testing)
+    accuracy = evaluator.evaluate(predictions)
+    println("test error after adding more trees: " + (1.0 - accuracy))
+
+
 //     // Model 3 - trained on first and second batches of data
 //     rf.setNumTrees(10)
 //     val train12: DataFrame = train1.unionAll(train2)

@@ -198,6 +198,168 @@ private[ml] object WahooRandomForest extends Logging {
     }
   }
 
+
+  def runAndUpdateClassifier(
+           trees: Array[DecisionTreeClassificationModel],
+           input: RDD[LabeledPoint],
+           strategy: OldStrategy,
+           numTrees: Int,
+           featureSubsetStrategy: String,
+           seed: Long,
+           parentUID: Option[String] = None): Array[DecisionTreeModel] = {
+
+    val timer = new TimeTracker()
+
+    timer.start("total")
+
+    timer.start("init")
+
+    val retaggedInput = input.retag(classOf[LabeledPoint])
+    val metadata =
+      DecisionTreeMetadata.buildMetadata(retaggedInput, strategy, numTrees, featureSubsetStrategy)
+    logDebug("algo = " + strategy.algo)
+    logDebug("numTrees = " + numTrees)
+    logDebug("seed = " + seed)
+    logDebug("maxBins = " + metadata.maxBins)
+    logDebug("featureSubsetStrategy = " + featureSubsetStrategy)
+    logDebug("numFeaturesPerNode = " + metadata.numFeaturesPerNode)
+    logDebug("subsamplingRate = " + strategy.subsamplingRate)
+
+    // Find the splits and the corresponding bins (interval between the splits) using a sample
+    // of the input data.
+    timer.start("findSplitsBins")
+    val splits = findSplits(retaggedInput, metadata)
+    timer.stop("findSplitsBins")
+    logDebug("numBins: feature: number of bins")
+    logDebug(Range(0, metadata.numFeatures).map { featureIndex =>
+      s"\t$featureIndex\t${metadata.numBins(featureIndex)}"
+    }.mkString("\n"))
+
+    // Bin feature values (TreePoint representation).
+    // Cache input RDD for speedup during multiple passes.
+    val treeInput = TreePoint.convertToTreeRDD(retaggedInput, splits, metadata)
+
+    val withReplacement = numTrees > 1
+
+    val baggedInput = BaggedPoint
+      .convertToBaggedRDD(treeInput, strategy.subsamplingRate, numTrees, withReplacement, seed)
+      .persist(StorageLevel.MEMORY_AND_DISK)
+
+    // depth of the decision tree
+    val maxDepth = strategy.maxDepth
+    require(maxDepth <= 30,
+      s"DecisionTree currently only supports maxDepth <= 30, but was given maxDepth = $maxDepth.")
+
+    // Max memory usage for aggregates
+    // TODO: Calculate memory usage more precisely.
+    val maxMemoryUsage: Long = strategy.maxMemoryInMB * 1024L * 1024L
+    logDebug("max memory usage for aggregates = " + maxMemoryUsage + " bytes.")
+    val maxMemoryPerNode = {
+      val featureSubset: Option[Array[Int]] = if (metadata.subsamplingFeatures) {
+        // Find numFeaturesPerNode largest bins to get an upper bound on memory usage.
+        Some(metadata.numBins.zipWithIndex.sortBy(- _._1)
+          .take(metadata.numFeaturesPerNode).map(_._2))
+      } else {
+        None
+      }
+      WahooRandomForest.aggregateSizeForNode(metadata, featureSubset) * 8L
+    }
+    require(maxMemoryPerNode <= maxMemoryUsage,
+      s"RandomForest/DecisionTree given maxMemoryInMB = ${strategy.maxMemoryInMB}," +
+        " which is too small for the given features." +
+        s"  Minimum value = ${maxMemoryPerNode / (1024L * 1024L)}")
+
+    timer.stop("init")
+
+    /*
+     * The main idea here is to perform group-wise training of the decision tree nodes thus
+     * reducing the passes over the data from (# nodes) to (# nodes / maxNumberOfNodesPerGroup).
+     * Each data sample is handled by a particular node (or it reaches a leaf and is not used
+     * in lower levels).
+     */
+
+    // Create an RDD of node Id cache.
+    // At first, all the rows belong to the root nodes (node Id == 1).
+    val nodeIdCache = if (strategy.useNodeIdCache) {
+      Some(NodeIdCache.init(
+        data = baggedInput,
+        numTrees = numTrees,
+        checkpointInterval = strategy.checkpointInterval,
+        initVal = 1))
+    } else {
+      None
+    }
+
+    // FIFO queue of nodes to train: (treeIndex, node)
+    val nodeQueue = new mutable.Queue[(Int, LearningNode)]()
+
+    val rng = new Random()
+    rng.setSeed(seed)
+
+    // Allocate and queue root nodes.
+    val topNodes: Array[LearningNode] = trees.map(_.rootNode.asInstanceOf[LearningNode])
+    // Enqueue leaf nodes
+    Range(0, numTrees).foreach(treeIndex => {
+      LearningNode.getLeaves(topNodes(treeIndex)).foreach(node => {
+        nodeQueue.enqueue((treeIndex, node))
+      })
+    })
+
+    // Modification for online learning: we store aggregate statistics at
+    // leaf nodes only, so we can track advantageous splits in the future.
+    while (nodeQueue.nonEmpty) {
+      // Collect some nodes to split, and choose features for each node (if subsampling).
+      // Each group of nodes may come from one or multiple trees, and at multiple levels.
+      val (nodesForGroup, treeToNodeToIndexInfo) =
+        WahooRandomForest.selectNodesToSplit(nodeQueue, maxMemoryUsage, metadata, rng)
+      // Sanity check (should never occur):
+      assert(nodesForGroup.nonEmpty,
+        s"RandomForest selected empty nodesForGroup.  Error for unknown reason.")
+
+      // Choose node splits, and enqueue new nodes as needed.
+      timer.start("findBestSplits")
+      WahooRandomForest.findBestSplits(baggedInput, metadata, topNodes, nodesForGroup,
+        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache)
+      timer.stop("findBestSplits")
+    }
+
+    baggedInput.unpersist()
+
+    timer.stop("total")
+
+    logInfo("Internal timing for DecisionTree:")
+    logInfo(s"$timer")
+
+    // Delete any remaining checkpoints used for node Id cache.
+    if (nodeIdCache.nonEmpty) {
+      try {
+        nodeIdCache.get.deleteAllCheckpoints()
+      } catch {
+        case e: IOException =>
+          logWarning(s"delete all checkpoints failed. Error reason: ${e.getMessage}")
+      }
+    }
+
+    parentUID match {
+      case Some(uid) =>
+        if (strategy.algo == OldAlgo.Classification) {
+          topNodes.map { rootNode =>
+            new DecisionTreeClassificationModel(uid, rootNode.makeNode, strategy.getNumClasses)
+          }
+        } else {
+          topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.makeNode))
+        }
+      case None =>
+        if (strategy.algo == OldAlgo.Classification) {
+          topNodes.map { rootNode =>
+            new DecisionTreeClassificationModel(rootNode.makeNode, strategy.getNumClasses)
+          }
+        } else {
+          topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.makeNode))
+        }
+    }
+  }
+
   /**
     * Get the node index corresponding to this data point.
     * This function mimics prediction, passing an example from the root node down to a leaf

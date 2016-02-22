@@ -25,8 +25,8 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
   /**
    * Trains a model for future online learning by maintaining candidate splits
    * at every node.
-    *
-    * @param dataset - the initial dataset on which the model will be trained.
+   *
+   * @param dataset - the initial dataset on which the model will be trained.
    * @return - a trained model that maintains candidate splits at nodes so that it can
    * be updated in an online fashion.
    */
@@ -58,27 +58,65 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     val strategy =
       super.getOldStrategy(categoricalFeatures, numClasses, OldAlgo.Classification, getOldImpurity)
 
+    val numFeatures = oldDataset.first().features.size
+
     val trees =
       WahooRandomForest.run(oldDataset, strategy, getNumTrees, getFeatureSubsetStrategy, getSeed)
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
+    new RandomForestClassificationModel(trees, numFeatures, numClasses)
+  }
+
+  override def update(oldModel: RandomForestClassificationModel,
+             dataset: DataFrame): RandomForestClassificationModel = {
+    val categoricalFeatures: Map[Int, Int] =
+      MetadataUtils.getCategoricalFeatures(dataset.schema($(featuresCol)))
+    val numClasses: Int = MetadataUtils.getNumClasses(dataset.schema($(labelCol))) match {
+      case Some(n: Int) => {
+        if (n != oldModel.numClasses) {
+          throw new IllegalArgumentException("Error: the number of classes in a new batch " +
+            "of data must match the number of classes in the previously-seen data.")
+        }
+        n
+      }
+      case None => throw new IllegalArgumentException("RandomForestClassifier was given input" +
+        s" with invalid label column ${$(labelCol)}, without the number of classes" +
+        " specified. See StringIndexer.")
+    }
+    // Extract label and features column from dataset and place into RDD
+    val oldDataset: RDD[LabeledPoint] = extractLabeledPoints(dataset)
+
+    // Use classification
+    val strategy =
+      super.getOldStrategy(categoricalFeatures, numClasses, OldAlgo.Classification, getOldImpurity)
+
     val numFeatures = oldDataset.first().features.size
-    println("wahoo i got here")
+    assert(numFeatures == oldModel.numFeatures,
+      "Error, the number of features in a new batch " +
+        "of data must match the number of features in the previously-seen data.")
+    assert(oldModel.trees.length == getNumTrees, "Error, the number of trees in the " +
+        "new model must match the number of trees in the old model.")
+
+    val trees =
+      WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy, getNumTrees,
+        getFeatureSubsetStrategy, getSeed)
+        .map(_.asInstanceOf[DecisionTreeClassificationModel])
+
     new RandomForestClassificationModel(trees, numFeatures, numClasses)
   }
 
   /**
    * Trains a model using a warm start, adding more decision trees to the
    * existing set of decision trees within the model.
-    *
-    * @param oldModel - the trained model that will be trained further
+   *
+   * @param oldModel - the trained model that will be trained further
    * @param dataset - the dataset on which the model will be trained
    * @param addedTrees - the number of additional decision trees.
    * @return an updated model that incorporates the new trees.
    */
-  def addTrees(oldModel: RandomForestClassificationModel, dataset: DataFrame, addedTrees: Int): RandomForestClassificationModel = {
+  override def addTrees(oldModel: RandomForestClassificationModel, dataset: DataFrame, addedTrees: Int): RandomForestClassificationModel = {
     super.setNumTrees(addedTrees)
-    val model = super.train(dataset)
+    val model = train(dataset)
     val trees: Array[DecisionTreeClassificationModel] = (oldModel.trees ++ model.trees).map(_.asInstanceOf[DecisionTreeClassificationModel])
     new RandomForestClassificationModel(oldModel.uid, trees, oldModel.numFeatures, oldModel.numClasses)
   }
@@ -97,7 +135,7 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
 @Experimental
 final class RandomForestClassificationModel private[ml] (
                                                           override val uid: String,
-                                                          private val _trees: Array[DecisionTreeClassificationModel],
+                                                          val _trees: Array[DecisionTreeClassificationModel],
                                                           val numFeatures: Int,
                                                           override val numClasses: Int)
   extends ProbabilisticClassificationModel[Vector, RandomForestClassificationModel]
