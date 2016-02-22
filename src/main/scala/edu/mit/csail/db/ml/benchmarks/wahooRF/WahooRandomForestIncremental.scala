@@ -31,6 +31,8 @@ object WahooRandomForestIncremental {
       .setFeaturesCol("features")
       .setNumTrees(5)
 
+    rf.randomized = true
+
     // Split into training and testing data
     val Array(train1, train2, train3, train4, train5, train6, train7, testing) = df.randomSplit(Array(0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2))
 

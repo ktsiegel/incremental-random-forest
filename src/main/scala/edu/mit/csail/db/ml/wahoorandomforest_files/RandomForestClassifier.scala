@@ -44,6 +44,8 @@ class RandomForestClassifier(override val uid: String)
 
   def this() = this(Identifiable.randomUID("rfc"))
 
+  var randomized = false
+
   // Override parameter setters from parent trait for Java API compatibility.
 
   // Parameters from TreeClassifierParams:

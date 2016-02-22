@@ -61,7 +61,7 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     val numFeatures = oldDataset.first().features.size
 
     val trees =
-      WahooRandomForest.run(oldDataset, strategy, getNumTrees, getFeatureSubsetStrategy, getSeed)
+      WahooRandomForest.run(oldDataset, strategy, getNumTrees, getFeatureSubsetStrategy, getSeed, randomized)
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
     new RandomForestClassificationModel(trees, numFeatures, numClasses)
@@ -99,7 +99,7 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
 
     val trees =
       WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy, getNumTrees,
-        getFeatureSubsetStrategy, getSeed)
+        getFeatureSubsetStrategy, getSeed, randomized)
         .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
     new RandomForestClassificationModel(trees, numFeatures, numClasses)

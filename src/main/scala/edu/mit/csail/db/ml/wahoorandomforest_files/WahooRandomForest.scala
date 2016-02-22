@@ -49,6 +49,7 @@ private[ml] object WahooRandomForest extends Logging {
            numTrees: Int,
            featureSubsetStrategy: String,
            seed: Long,
+           erf: Boolean,
            parentUID: Option[String] = None): Array[DecisionTreeModel] = {
 
     val timer = new TimeTracker()
@@ -157,7 +158,7 @@ private[ml] object WahooRandomForest extends Logging {
       // Choose node splits, and enqueue new nodes as needed.
       timer.start("findBestSplits")
       WahooRandomForest.findBestSplits(baggedInput, metadata, topNodes, nodesForGroup,
-        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache)
+        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, erf)
       timer.stop("findBestSplits")
     }
 
@@ -206,6 +207,7 @@ private[ml] object WahooRandomForest extends Logging {
            numTrees: Int,
            featureSubsetStrategy: String,
            seed: Long,
+           erf: Boolean,
            parentUID: Option[String] = None): Array[DecisionTreeModel] = {
 
     val timer = new TimeTracker()
@@ -319,7 +321,7 @@ private[ml] object WahooRandomForest extends Logging {
       // Choose node splits, and enqueue new nodes as needed.
       timer.start("findBestSplits")
       WahooRandomForest.findBestSplits(baggedInput, metadata, topNodes, nodesForGroup,
-        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache)
+        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, erf)
       timer.stop("findBestSplits")
     }
 
@@ -529,7 +531,8 @@ private[ml] object WahooRandomForest extends Logging {
                                     splits: Array[Array[Split]],
                                     nodeQueue: mutable.Queue[(Int, LearningNode)],
                                     timer: TimeTracker = new TimeTracker,
-                                    nodeIdCache: Option[NodeIdCache] = None): Unit = {
+                                    nodeIdCache: Option[NodeIdCache] = None,
+                                    erf: Boolean): Unit = {
 
     /*
      * The high-level descriptions of the best split optimizations are noted here.
@@ -721,8 +724,11 @@ private[ml] object WahooRandomForest extends Logging {
           }
 
           // find best split for each node
-          val (split: Split, stats: ImpurityStats) =
+          val (split: Split, stats: ImpurityStats) = if (erf) {
             binsToBestSplitRandomized(aggStats, splits, featuresForNode, nodes(nodeIndex))
+          } else {
+            binsToBestSplit(aggStats, splits, featuresForNode, nodes(nodeIndex))
+          }
           (nodeIndex, (split, stats, aggStats))
         }
     }.collectAsMap()
@@ -753,7 +759,7 @@ private[ml] object WahooRandomForest extends Logging {
         node.stats = stats
         logDebug("Node = " + node)
 
-        if (isLeaf) {
+        if (isLeaf && erf) {
           node.aggStats = Some(aggStats)
         }
         else {
@@ -1035,6 +1041,7 @@ private[ml] object WahooRandomForest extends Logging {
           // Cumulative sum (scanLeft) of bin statistics.
           // Afterwards, binAggregates for a bin is the sum of aggregates for
           // that bin + all preceding bins.
+          // TODO aggregate previous statistics
           val nodeFeatureOffset = binAggregates.getFeatureOffset(featureIndexIdx)
           var splitIndex = 0
           while (splitIndex < numSplits) {
