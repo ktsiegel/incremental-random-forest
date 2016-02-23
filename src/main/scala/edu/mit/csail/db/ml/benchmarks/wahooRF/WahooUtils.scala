@@ -28,7 +28,7 @@ object WahooUtils {
       .load(trainingDataPath)
   }
 
-  def columnIntToDouble(column: String, dataset: DataFrame): DataFrame = {
+  def processIntColumn(column: String, dataset: DataFrame): DataFrame = {
     val toDouble = org.apache.spark.sql.functions.udf[Double, Int](intLabel => intLabel.asInstanceOf[Double])
     dataset.withColumn(column, toDouble(dataset(column)))
   }
@@ -80,7 +80,6 @@ object WahooUtils {
 
   def getNumericFields(dataset: DataFrame): Seq[StructField] = {
     dataset.schema.filter( entry =>
-      entry.dataType == IntegerType ||
       entry.dataType == DoubleType)
   }
 

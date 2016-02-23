@@ -25,8 +25,7 @@ import org.apache.spark.Logging
 import org.apache.spark.mllib.linalg.{Vectors, Vector}
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.mllib.tree.configuration.{Algo => OldAlgo, Strategy => OldStrategy}
-import org.apache.spark.mllib.tree.impl.{BaggedPoint, DTStatsAggregator, DecisionTreeMetadata,
-TimeTracker}
+import org.apache.spark.mllib.tree.impl.{BaggedPoint, TimeTracker, DecisionTreeMetadata}
 import org.apache.spark.mllib.tree.impurity.ImpurityCalculator
 import org.apache.spark.mllib.tree.model.ImpurityStats
 import org.apache.spark.rdd.RDD
@@ -51,7 +50,7 @@ private[ml] object WahooRandomForest extends Logging {
            seed: Long,
            erf: Boolean,
            parentUID: Option[String] = None):
-  (Array[DecisionTreeModel], Array[Array[Split]]) = {
+  (Array[DecisionTreeModel], Array[Array[Split]], DecisionTreeMetadata) = {
 
     val timer = new TimeTracker()
 
@@ -66,6 +65,9 @@ private[ml] object WahooRandomForest extends Logging {
     logDebug("numTrees = " + numTrees)
     logDebug("seed = " + seed)
     logDebug("maxBins = " + metadata.maxBins)
+    println("maxBins = " + metadata.maxBins)
+    println("numBins = ")
+    metadata.numBins.foreach(num => println(num))
     logDebug("featureSubsetStrategy = " + featureSubsetStrategy)
     logDebug("numFeaturesPerNode = " + metadata.numFeaturesPerNode)
     logDebug("subsamplingRate = " + strategy.subsamplingRate)
@@ -202,7 +204,7 @@ private[ml] object WahooRandomForest extends Logging {
             .asInstanceOf[DecisionTreeModel])
         }
     }
-    (model, splits)
+    (model, splits, metadata)
   }
 
   def runAndUpdateClassifier(
@@ -214,6 +216,7 @@ private[ml] object WahooRandomForest extends Logging {
            seed: Long,
            erf: Boolean,
            splits: Array[Array[Split]],
+           oldMetadata: DecisionTreeMetadata,
            parentUID: Option[String] = None): Array[DecisionTreeModel] = {
 
     val timer = new TimeTracker()
@@ -223,12 +226,15 @@ private[ml] object WahooRandomForest extends Logging {
     timer.start("init")
 
     val retaggedInput = input.retag(classOf[LabeledPoint])
-    val metadata =
+    var metadata =
       DecisionTreeMetadata.buildMetadata(retaggedInput, strategy, numTrees, featureSubsetStrategy)
     logDebug("algo = " + strategy.algo)
     logDebug("numTrees = " + numTrees)
     logDebug("seed = " + seed)
     logDebug("maxBins = " + metadata.maxBins)
+    println("maxBins for update = " + metadata.maxBins)
+    println("numBins for update = ")
+    metadata.numBins.foreach(num => println(num))
     logDebug("featureSubsetStrategy = " + featureSubsetStrategy)
     logDebug("numFeaturesPerNode = " + metadata.numFeaturesPerNode)
     logDebug("subsamplingRate = " + strategy.subsamplingRate)
@@ -237,6 +243,15 @@ private[ml] object WahooRandomForest extends Logging {
     // of the input data.
     timer.start("findSplitsBins")
     // val splits = findSplits(retaggedInput, metadata)
+    // metadata.numBins = prevMetadata.numBins
+    // metadata.maxBins = prevMetadata.maxBins
+    metadata = new DecisionTreeMetadata(metadata.numFeatures,
+      metadata.numExamples, metadata.numClasses, metadata.maxBins,
+      metadata.featureArity, metadata.unorderedFeatures, oldMetadata.numBins,
+      metadata.impurity, metadata.quantileStrategy, metadata.maxDepth,
+      metadata.minInstancesPerNode, metadata.minInfoGain, metadata.numTrees,
+      metadata.numFeaturesPerNode)
+
     timer.stop("findSplitsBins")
     logDebug("numBins: feature: number of bins")
     logDebug(Range(0, metadata.numFeatures).map { featureIndex =>
@@ -692,7 +707,10 @@ private[ml] object WahooRandomForest extends Logging {
           val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
             Some(nodeToFeatures(nodeIndex))
           }
-          new DTStatsAggregator(metadata, featuresForNode)
+          val statsAgg = new DTStatsAggregator(metadata, featuresForNode)
+          println("statsAgg: ")
+          statsAgg.numBins.foreach(num => println(num))
+          statsAgg
         }
 
         // iterator all instances in current partition and update aggregate stats
@@ -710,7 +728,11 @@ private[ml] object WahooRandomForest extends Logging {
           val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
             Some(nodeToFeatures(nodeIndex))
           }
-          new DTStatsAggregator(metadata, featuresForNode)
+          val statsAgg = new DTStatsAggregator(metadata, featuresForNode)
+          println("statsAgg: ")
+          statsAgg.numBins.foreach(num => println(num))
+          println("")
+          statsAgg
         }
 
         // iterator all instances in current partition and update aggregate stats
@@ -731,7 +753,12 @@ private[ml] object WahooRandomForest extends Logging {
           // For online random forests, we merge in stats from points from
           // previous batches.
           nodes(nodeIndex).aggStats match {
-            case Some(stats) => aggStats.merge(stats)
+            case Some(stats) => {
+              println("stats sizes: ")
+              println(stats.allStatsSize)
+              println(aggStats.allStatsSize)
+              aggStats.merge(stats)
+            }
             case None => {}
           }
 

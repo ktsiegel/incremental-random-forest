@@ -19,7 +19,6 @@ package org.apache.spark.ml.wahoo.tree
 
 import org.apache.spark.annotation.DeveloperApi
 import org.apache.spark.mllib.linalg.Vector
-import org.apache.spark.mllib.tree.impl.DTStatsAggregator
 import org.apache.spark.mllib.tree.impurity.ImpurityCalculator
 import org.apache.spark.mllib.tree.model.{InformationGainStats => OldInformationGainStats, Node => OldNode, Predict => OldPredict, ImpurityStats}
 import scala.collection.mutable
@@ -269,16 +268,14 @@ private[wahoo] class LearningNode(
   }
 
   def makeNode: LearningNode = {
-    if (!isDone) {
-      if (!isLeaf) {
-        makeInternalNode
-      }
-      isDone = true
-      if (stats.valid) {
-        prediction = stats.impurityCalculator.predict
-        impurity = stats.impurity
-        impurityStats = stats.impurityCalculator
-      }
+    if (!isLeaf) {
+      makeInternalNode
+    }
+    isDone = true
+    if (stats.valid) {
+      prediction = stats.impurityCalculator.predict
+      impurity = stats.impurity
+      impurityStats = stats.impurityCalculator
     }
     return this
   }

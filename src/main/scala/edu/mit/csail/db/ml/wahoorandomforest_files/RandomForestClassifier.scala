@@ -113,7 +113,7 @@ class RandomForestClassifier(override val uid: String)
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
     val numFeatures = oldDataset.first().features.size
-    new RandomForestClassificationModel(trees, numFeatures, numClasses, null)
+    new RandomForestClassificationModel(trees, numFeatures, numClasses, null, null)
   }
 
   override def copy(extra: ParamMap): RandomForestClassifier = defaultCopy(extra)
