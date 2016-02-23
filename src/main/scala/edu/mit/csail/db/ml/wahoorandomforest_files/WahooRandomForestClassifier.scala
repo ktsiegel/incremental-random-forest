@@ -94,8 +94,6 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     assert(numFeatures == oldModel.numFeatures,
       "Error, the number of features in a new batch " +
         "of data must match the number of features in the previously-seen data.")
-    assert(oldModel.trees.length == getNumTrees, "Error, the number of trees in the " +
-        "new model must match the number of trees in the old model.")
 
     val trees =
       WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy, getNumTrees,

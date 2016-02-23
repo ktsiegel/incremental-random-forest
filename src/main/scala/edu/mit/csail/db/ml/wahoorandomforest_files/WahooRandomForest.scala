@@ -718,6 +718,13 @@ private[ml] object WahooRandomForest extends Logging {
           // Collect aggregate statistics for leaves
           (nodeIndex, (None, None, aggStats))
         } else {
+          // For online random forests, we merge in stats from points from
+          // previous batches.
+          nodes(nodeIndex).aggStats match {
+            case Some(stats) => aggStats.merge(stats)
+            case None => {}
+          }
+
           // Find best splits for non-leaves only
           val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
             Some(nodeToFeatures(nodeIndex))
