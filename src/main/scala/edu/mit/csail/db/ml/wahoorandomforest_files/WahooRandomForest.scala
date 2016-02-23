@@ -704,8 +704,19 @@ private[ml] object WahooRandomForest extends Logging {
         // Construct a nodeStatsAggregators array to hold node aggregate stats,
         // each node will have a nodeStatsAggregator
         val nodeStatsAggregators = Array.tabulate(numNodes) { nodeIndex =>
-          val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
-            Some(nodeToFeatures(nodeIndex))
+//          val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
+//            Some(nodeToFeatures(nodeIndex))
+//          }
+          val featuresForNode = nodes(nodeIndex).aggStats match {
+            case Some(s) => {
+              println("using preloaded features")
+              assert(nodes(nodeIndex).features.isDefined)
+              nodes(nodeIndex).features
+            }
+            case None => nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
+              println("new features")
+              Some(nodeToFeatures(nodeIndex))
+            }
           }
           val statsAgg = new DTStatsAggregator(metadata, featuresForNode)
           println("statsAgg: ")
@@ -725,8 +736,16 @@ private[ml] object WahooRandomForest extends Logging {
         // Construct a nodeStatsAggregators array to hold node aggregate stats,
         // each node will have a nodeStatsAggregator
         val nodeStatsAggregators = Array.tabulate(numNodes) { nodeIndex =>
-          val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
-            Some(nodeToFeatures(nodeIndex))
+          val featuresForNode = nodes(nodeIndex).aggStats match {
+            case Some(s) => {
+              println("using preloaded features")
+              assert(nodes(nodeIndex).features.isDefined)
+              nodes(nodeIndex).features
+            }
+            case None => nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
+              println("new features")
+              Some(nodeToFeatures(nodeIndex))
+            }
           }
           val statsAgg = new DTStatsAggregator(metadata, featuresForNode)
           println("statsAgg: ")
@@ -763,8 +782,16 @@ private[ml] object WahooRandomForest extends Logging {
           }
 
           // Find best splits for non-leaves only
-          val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
-            Some(nodeToFeatures(nodeIndex))
+          val featuresForNode = nodes(nodeIndex).aggStats match {
+            case Some(s) => {
+              println("using preloaded features")
+              assert(nodes(nodeIndex).features.isDefined)
+              nodes(nodeIndex).features
+            }
+            case None => nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
+              println("new features")
+              Some(nodeToFeatures(nodeIndex))
+            }
           }
 
           // find best split for each node
@@ -773,7 +800,7 @@ private[ml] object WahooRandomForest extends Logging {
           } else {
             binsToBestSplit(aggStats, splits, featuresForNode, nodes(nodeIndex))
           }
-          (nodeIndex, (split, stats, aggStats))
+          (nodeIndex, (split, stats, aggStats, featuresForNode))
         }
     }.collectAsMap()
 
@@ -792,7 +819,8 @@ private[ml] object WahooRandomForest extends Logging {
         val nodeInfo = treeToNodeToIndexInfo(treeIndex)(nodeIndex)
         val aggNodeIndex = nodeInfo.nodeIndexInGroup
         // TODO option[]
-        val (split: Split, stats: ImpurityStats, aggStats: DTStatsAggregator) =
+        val (split: Split, stats: ImpurityStats, aggStats: DTStatsAggregator,
+          featuresForNode: Option[Array[Int]]) =
           nodeToBestSplits(aggNodeIndex)
         logDebug("best split = " + split)
 
@@ -805,6 +833,7 @@ private[ml] object WahooRandomForest extends Logging {
 
         if (isLeaf && erf) {
           node.aggStats = Some(aggStats)
+          node.features = featuresForNode
         }
         else {
           node.split = Some(split)
@@ -1435,8 +1464,12 @@ private[ml] object WahooRandomForest extends Logging {
       val (treeIndex, node) = nodeQueue.head
       // Choose subset of features for node (if subsampling).
       val featureSubset: Option[Array[Int]] = if (metadata.subsamplingFeatures) {
-        Some(SamplingUtils.reservoirSampleAndCount(Range(0,
-          metadata.numFeatures).iterator, metadata.numFeaturesPerNode, rng.nextLong())._1)
+        node.features match {
+          case Some(f) => node.features
+          case None =>
+            Some(SamplingUtils.reservoirSampleAndCount(Range(0,
+              metadata.numFeatures).iterator, metadata.numFeaturesPerNode, rng.nextLong())._1)
+        }
       } else {
         None
       }

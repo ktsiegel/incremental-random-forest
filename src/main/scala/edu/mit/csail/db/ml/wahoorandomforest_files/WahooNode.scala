@@ -145,6 +145,8 @@ private[wahoo] class LearningNode(
 
   var impurity: Double = -1.0
 
+  var features: Option[Array[Int]] = None
+
   private[ml] var impurityStats: ImpurityCalculator = null
 
   override private[wahoo] def subtreeDepth: Int = {

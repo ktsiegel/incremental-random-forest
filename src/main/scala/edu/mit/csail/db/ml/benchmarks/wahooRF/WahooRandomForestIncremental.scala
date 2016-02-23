@@ -31,15 +31,15 @@ object WahooRandomForestIncremental {
     val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
     val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
     val numericFields = WahooUtils.getNumericFields(df)
-    val assembler = WahooUtils.createAssembler(Array("QuoteConversion_Flag", "CoverageField1A"))
+    val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
     df = WahooUtils.processDataFrame(df, Array(indexer, assembler))
 
 
     val rf = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(1)
-      .setMaxDepth(5)
+      .setNumTrees(2)
+      .setMaxDepth(10)
 
     rf.randomized = true
 

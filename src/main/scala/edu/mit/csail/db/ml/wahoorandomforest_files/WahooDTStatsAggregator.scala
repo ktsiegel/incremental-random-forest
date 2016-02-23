@@ -29,7 +29,7 @@ import org.apache.spark.mllib.tree.impurity.{ImpurityCalculator, ImpurityAggrega
   */
 private[spark] class DTStatsAggregator(
                                         val metadata: DecisionTreeMetadata,
-                                        featureSubset: Option[Array[Int]]) extends Serializable {
+                                        val featureSubset: Option[Array[Int]]) extends Serializable {
 
   /**
     * [[ImpurityAggregator]] instance specifying the impurity type.
