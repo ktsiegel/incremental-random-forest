@@ -50,7 +50,8 @@ private[ml] object WahooRandomForest extends Logging {
            featureSubsetStrategy: String,
            seed: Long,
            erf: Boolean,
-           parentUID: Option[String] = None): Array[DecisionTreeModel] = {
+           parentUID: Option[String] = None):
+  (Array[DecisionTreeModel], Array[Array[Split]]) = {
 
     val timer = new TimeTracker()
 
@@ -72,7 +73,7 @@ private[ml] object WahooRandomForest extends Logging {
     // Find the splits and the corresponding bins (interval between the splits) using a sample
     // of the input data.
     timer.start("findSplitsBins")
-    val splits = findSplits(retaggedInput, metadata)
+    val splits: Array[Array[Split]] = findSplits(retaggedInput, metadata)
     timer.stop("findSplitsBins")
     logDebug("numBins: feature: number of bins")
     logDebug(Range(0, metadata.numFeatures).map { featureIndex =>
@@ -179,26 +180,30 @@ private[ml] object WahooRandomForest extends Logging {
       }
     }
 
-    parentUID match {
+    val model: Array[DecisionTreeModel] = parentUID match {
       case Some(uid) =>
         if (strategy.algo == OldAlgo.Classification) {
           topNodes.map { rootNode =>
             new DecisionTreeClassificationModel(uid, rootNode.makeNode, strategy.getNumClasses)
+              .asInstanceOf[DecisionTreeModel]
           }
         } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.makeNode))
+          topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.makeNode)
+            .asInstanceOf[DecisionTreeModel])
         }
       case None =>
         if (strategy.algo == OldAlgo.Classification) {
           topNodes.map { rootNode =>
             new DecisionTreeClassificationModel(rootNode.makeNode, strategy.getNumClasses)
+              .asInstanceOf[DecisionTreeModel]
           }
         } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.makeNode))
+          topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.makeNode)
+            .asInstanceOf[DecisionTreeModel])
         }
     }
+    (model, splits)
   }
-
 
   def runAndUpdateClassifier(
            trees: Array[DecisionTreeClassificationModel],
@@ -208,6 +213,7 @@ private[ml] object WahooRandomForest extends Logging {
            featureSubsetStrategy: String,
            seed: Long,
            erf: Boolean,
+           splits: Array[Array[Split]],
            parentUID: Option[String] = None): Array[DecisionTreeModel] = {
 
     val timer = new TimeTracker()
@@ -230,7 +236,7 @@ private[ml] object WahooRandomForest extends Logging {
     // Find the splits and the corresponding bins (interval between the splits) using a sample
     // of the input data.
     timer.start("findSplitsBins")
-    val splits = findSplits(retaggedInput, metadata)
+    // val splits = findSplits(retaggedInput, metadata)
     timer.stop("findSplitsBins")
     logDebug("numBins: feature: number of bins")
     logDebug(Range(0, metadata.numFeatures).map { featureIndex =>
@@ -347,17 +353,21 @@ private[ml] object WahooRandomForest extends Logging {
         if (strategy.algo == OldAlgo.Classification) {
           topNodes.map { rootNode =>
             new DecisionTreeClassificationModel(uid, rootNode.makeNode, strategy.getNumClasses)
+              .asInstanceOf[DecisionTreeModel]
           }
         } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.makeNode))
+          topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.makeNode)
+            .asInstanceOf[DecisionTreeModel])
         }
       case None =>
         if (strategy.algo == OldAlgo.Classification) {
           topNodes.map { rootNode =>
             new DecisionTreeClassificationModel(rootNode.makeNode, strategy.getNumClasses)
+              .asInstanceOf[DecisionTreeModel]
           }
         } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.makeNode))
+          topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.makeNode)
+            .asInstanceOf[DecisionTreeModel])
         }
     }
   }

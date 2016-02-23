@@ -3,6 +3,7 @@ package org.apache.spark.ml.wahoo
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.ml.classification.ProbabilisticClassificationModel
 import org.apache.spark.ml.param.ParamMap
+import org.apache.spark.ml.wahoo.tree.Split
 import org.apache.spark.ml.util.{Identifiable, MetadataUtils}
 import org.apache.spark.ml.wahoo.tree.{DecisionTreeModel, TreeEnsembleModel, DecisionTreeClassificationModel, WahooRandomForest}
 import org.apache.spark.mllib.linalg.{SparseVector, DenseVector, Vectors, Vector}
@@ -60,11 +61,15 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
 
     val numFeatures = oldDataset.first().features.size
 
-    val trees =
+    val (trees, splits) =
       WahooRandomForest.run(oldDataset, strategy, getNumTrees, getFeatureSubsetStrategy, getSeed, randomized)
-      .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
-    new RandomForestClassificationModel(trees, numFeatures, numClasses)
+    new RandomForestClassificationModel(
+      trees.map(_.asInstanceOf[DecisionTreeClassificationModel]),
+      numFeatures,
+      numClasses,
+      splits
+    )
   }
 
   override def update(oldModel: RandomForestClassificationModel,
@@ -96,11 +101,15 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
         "of data must match the number of features in the previously-seen data.")
 
     val trees =
-      WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy, getNumTrees,
-        getFeatureSubsetStrategy, getSeed, randomized)
-        .map(_.asInstanceOf[DecisionTreeClassificationModel])
+      WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy,
+        getNumTrees, getFeatureSubsetStrategy, getSeed, randomized, oldModel.splits)
+          .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
-    new RandomForestClassificationModel(trees, numFeatures, numClasses)
+    new RandomForestClassificationModel(
+      trees,
+      numFeatures,
+      numClasses,
+      oldModel.splits)
   }
 
   /**
@@ -114,9 +123,14 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
    */
   override def addTrees(oldModel: RandomForestClassificationModel, dataset: DataFrame, addedTrees: Int): RandomForestClassificationModel = {
     super.setNumTrees(addedTrees)
+    // TODO pass in splits as optimization
     val model = train(dataset)
     val trees: Array[DecisionTreeClassificationModel] = (oldModel.trees ++ model.trees).map(_.asInstanceOf[DecisionTreeClassificationModel])
-    new RandomForestClassificationModel(oldModel.uid, trees, oldModel.numFeatures, oldModel.numClasses)
+    new RandomForestClassificationModel(oldModel.uid,
+      trees,
+      oldModel.numFeatures,
+      oldModel.numClasses,
+      oldModel.splits)
   }
 }
 
@@ -135,7 +149,8 @@ final class RandomForestClassificationModel private[ml] (
                                                           override val uid: String,
                                                           val _trees: Array[DecisionTreeClassificationModel],
                                                           val numFeatures: Int,
-                                                          override val numClasses: Int)
+                                                          override val numClasses: Int,
+                                                          val splits: Array[Array[Split]])
   extends ProbabilisticClassificationModel[Vector, RandomForestClassificationModel]
     with TreeEnsembleModel with Serializable {
 
@@ -149,8 +164,9 @@ final class RandomForestClassificationModel private[ml] (
   private[ml] def this(
                         trees: Array[DecisionTreeClassificationModel],
                         numFeatures: Int,
-                        numClasses: Int) =
-    this(Identifiable.randomUID("rfc"), trees, numFeatures, numClasses)
+                        numClasses: Int,
+                        splits: Array[Array[Split]]) =
+    this(Identifiable.randomUID("rfc"), trees, numFeatures, numClasses, splits)
 
   override def trees: Array[DecisionTreeModel] = _trees.asInstanceOf[Array[DecisionTreeModel]]
 
@@ -198,7 +214,7 @@ final class RandomForestClassificationModel private[ml] (
   }
 
   override def copy(extra: ParamMap): RandomForestClassificationModel = {
-    copyValues(new RandomForestClassificationModel(uid, _trees, numFeatures, numClasses), extra)
+    copyValues(new RandomForestClassificationModel(uid, _trees, numFeatures, numClasses, splits), extra)
       .setParent(parent)
   }
 
@@ -236,7 +252,8 @@ private[ml] object RandomForestClassificationModel {
                oldModel: OldRandomForestModel,
                parent: RandomForestClassifier,
                categoricalFeatures: Map[Int, Int],
-               numClasses: Int): RandomForestClassificationModel = {
+               numClasses: Int,
+               splits: Array[Array[Split]]): RandomForestClassificationModel = {
     require(oldModel.algo == OldAlgo.Classification, "Cannot convert RandomForestModel" +
       s" with algo=${oldModel.algo} (old API) to RandomForestClassificationModel (new API).")
     val newTrees = oldModel.trees.map { tree =>
@@ -244,6 +261,6 @@ private[ml] object RandomForestClassificationModel {
       DecisionTreeClassificationModel.fromOld(tree, null, categoricalFeatures)
     }
     val uid = if (parent != null) parent.uid else Identifiable.randomUID("rfc")
-    new RandomForestClassificationModel(uid, newTrees, -1, numClasses)
+    new RandomForestClassificationModel(uid, newTrees, -1, numClasses, splits)
   }
 }

@@ -43,13 +43,13 @@ object WahooRandomForestIncremental {
     println("test error after being trained on data batch 1: " + (1.0 - accuracy))
 
     // Model 2 - trained using more trees
-    val model2 = rf.addTrees(model1, train1, 10)
-    predictions = model2.transform(testing)
-    accuracy = evaluator.evaluate(predictions)
-    println("test error after adding more trees: " + (1.0 - accuracy))
+   //  val model2 = rf.addTrees(model1, train1, 10)
+   //  predictions = model2.transform(testing)
+   //  accuracy = evaluator.evaluate(predictions)
+   //  println("test error after adding more trees: " + (1.0 - accuracy))
 
     // Model 3 - trained on first and second batches of data
-    val model3 = rf.update(model2, train2)
+    val model3 = rf.update(model1, train2)
     predictions = model3.transform(testing)
     accuracy = evaluator.evaluate(predictions)
     println("test error after being trained on data batches 1 and 2: " + (1.0 - accuracy))
