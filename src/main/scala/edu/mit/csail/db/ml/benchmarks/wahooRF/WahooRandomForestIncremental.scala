@@ -15,31 +15,30 @@ object WahooRandomForestIncremental {
       args(0)
     }
 
-    // var df: DataFrame = WahooUtils.readData(trainingDataPath, "Wahoo", "local[2]")
-    // df = WahooUtils.processIntColumns(df)
-    // val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
-    // val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
-    // val numericFields = WahooUtils.getNumericFields(df)
-    // val stringFields: Seq[StructField] = WahooUtils.getStringFields(df,
-    //     Some(Array("Field6", "Field12", "CoverageField8", "CoverageField9")))
-    // val stringProcesser = WahooUtils.processStringColumns(df, stringFields)
-    // val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray ++ stringFields.map(_.name + "_vec"))
-    // df = WahooUtils.processDataFrame(df, stringProcesser :+ indexer :+ assembler)
-
     var df: DataFrame = WahooUtils.readData(trainingDataPath, "Wahoo", "local[2]")
-    df = WahooUtils.processIntColumn("QuoteConversion_Flag", df)
+    df = WahooUtils.processIntColumns(df)
     val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
     val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
     val numericFields = WahooUtils.getNumericFields(df)
-    val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
-    df = WahooUtils.processDataFrame(df, Array(indexer, assembler))
+    val stringFields: Seq[StructField] = WahooUtils.getStringFields(df,
+        Some(Array("Field6", "Field12", "CoverageField8", "CoverageField9")))
+    val stringProcesser = WahooUtils.processStringColumns(df, stringFields)
+    val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray ++ stringFields.map(_.name + "_vec"))
+    df = WahooUtils.processDataFrame(df, stringProcesser :+ indexer :+ assembler)
+
+    // var df: DataFrame = WahooUtils.readData(trainingDataPath, "Wahoo", "local[2]")
+    // df = WahooUtils.processIntColumn("QuoteConversion_Flag", df)
+    // val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
+    // val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
+    // val numericFields = WahooUtils.getNumericFields(df)
+    // val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
+    // df = WahooUtils.processDataFrame(df, Array(indexer, assembler))
 
 
     val rf = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(2)
-      .setMaxDepth(10)
+      .setNumTrees(5)
 
     rf.randomized = true
 

@@ -35,11 +35,10 @@ private[spark] class DTStatsAggregator(
     * [[ImpurityAggregator]] instance specifying the impurity type.
     */
   val impurityAggregator: ImpurityAggregator = metadata.impurity match {
-    case Gini => new GiniAggregator(metadata.numClasses)
-    case Entropy => new EntropyAggregator(metadata.numClasses)
-    case Variance => new VarianceAggregator()
-      // TODO fix gini
-    case _ => new GiniAggregator(metadata.numClasses)//throw new IllegalArgumentException(s"Bad impurity parameter: ${metadata.impurity}")
+    case org.apache.spark.mllib.tree.impurity.Gini => new GiniAggregator(metadata.numClasses)
+    case org.apache.spark.mllib.tree.impurity.Entropy => new EntropyAggregator(metadata.numClasses)
+    case org.apache.spark.mllib.tree.impurity.Variance => new VarianceAggregator()
+    case _ => throw new IllegalArgumentException(s"Bad impurity parameter: ${metadata.impurity}")
   }
 
   /**

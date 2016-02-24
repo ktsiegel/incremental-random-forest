@@ -709,19 +709,14 @@ private[ml] object WahooRandomForest extends Logging {
 //          }
           val featuresForNode = nodes(nodeIndex).aggStats match {
             case Some(s) => {
-              println("using preloaded features")
               assert(nodes(nodeIndex).features.isDefined)
               nodes(nodeIndex).features
             }
             case None => nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
-              println("new features")
               Some(nodeToFeatures(nodeIndex))
             }
           }
-          val statsAgg = new DTStatsAggregator(metadata, featuresForNode)
-          println("statsAgg: ")
-          statsAgg.numBins.foreach(num => println(num))
-          statsAgg
+          new DTStatsAggregator(metadata, featuresForNode)
         }
 
         // iterator all instances in current partition and update aggregate stats
@@ -738,20 +733,14 @@ private[ml] object WahooRandomForest extends Logging {
         val nodeStatsAggregators = Array.tabulate(numNodes) { nodeIndex =>
           val featuresForNode = nodes(nodeIndex).aggStats match {
             case Some(s) => {
-              println("using preloaded features")
               assert(nodes(nodeIndex).features.isDefined)
               nodes(nodeIndex).features
             }
             case None => nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
-              println("new features")
               Some(nodeToFeatures(nodeIndex))
             }
           }
-          val statsAgg = new DTStatsAggregator(metadata, featuresForNode)
-          println("statsAgg: ")
-          statsAgg.numBins.foreach(num => println(num))
-          println("")
-          statsAgg
+          new DTStatsAggregator(metadata, featuresForNode)
         }
 
         // iterator all instances in current partition and update aggregate stats
@@ -771,6 +760,7 @@ private[ml] object WahooRandomForest extends Logging {
         } else {
           // For online random forests, we merge in stats from points from
           // previous batches.
+          // TODO remove
           nodes(nodeIndex).aggStats match {
             case Some(stats) => {
               println("stats sizes: ")
