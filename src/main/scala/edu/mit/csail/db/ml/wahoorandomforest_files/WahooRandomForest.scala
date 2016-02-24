@@ -65,9 +65,6 @@ private[ml] object WahooRandomForest extends Logging {
     logDebug("numTrees = " + numTrees)
     logDebug("seed = " + seed)
     logDebug("maxBins = " + metadata.maxBins)
-    println("maxBins = " + metadata.maxBins)
-    println("numBins = ")
-    metadata.numBins.foreach(num => println(num))
     logDebug("featureSubsetStrategy = " + featureSubsetStrategy)
     logDebug("numFeaturesPerNode = " + metadata.numFeaturesPerNode)
     logDebug("subsamplingRate = " + strategy.subsamplingRate)
@@ -232,9 +229,6 @@ private[ml] object WahooRandomForest extends Logging {
     logDebug("numTrees = " + numTrees)
     logDebug("seed = " + seed)
     logDebug("maxBins = " + metadata.maxBins)
-    println("maxBins for update = " + metadata.maxBins)
-    println("numBins for update = ")
-    metadata.numBins.foreach(num => println(num))
     logDebug("featureSubsetStrategy = " + featureSubsetStrategy)
     logDebug("numFeaturesPerNode = " + metadata.numFeaturesPerNode)
     logDebug("subsamplingRate = " + strategy.subsamplingRate)
@@ -704,17 +698,8 @@ private[ml] object WahooRandomForest extends Logging {
         // Construct a nodeStatsAggregators array to hold node aggregate stats,
         // each node will have a nodeStatsAggregator
         val nodeStatsAggregators = Array.tabulate(numNodes) { nodeIndex =>
-//          val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
-//            Some(nodeToFeatures(nodeIndex))
-//          }
-          val featuresForNode = nodes(nodeIndex).aggStats match {
-            case Some(s) => {
-              assert(nodes(nodeIndex).features.isDefined)
-              nodes(nodeIndex).features
-            }
-            case None => nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
+          val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
               Some(nodeToFeatures(nodeIndex))
-            }
           }
           new DTStatsAggregator(metadata, featuresForNode)
         }
@@ -731,14 +716,8 @@ private[ml] object WahooRandomForest extends Logging {
         // Construct a nodeStatsAggregators array to hold node aggregate stats,
         // each node will have a nodeStatsAggregator
         val nodeStatsAggregators = Array.tabulate(numNodes) { nodeIndex =>
-          val featuresForNode = nodes(nodeIndex).aggStats match {
-            case Some(s) => {
-              assert(nodes(nodeIndex).features.isDefined)
-              nodes(nodeIndex).features
-            }
-            case None => nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
-              Some(nodeToFeatures(nodeIndex))
-            }
+          val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
+            Some(nodeToFeatures(nodeIndex))
           }
           new DTStatsAggregator(metadata, featuresForNode)
         }
@@ -760,28 +739,16 @@ private[ml] object WahooRandomForest extends Logging {
         } else {
           // For online random forests, we merge in stats from points from
           // previous batches.
-          // TODO remove
           nodes(nodeIndex).aggStats match {
             case Some(stats) => {
-              println("stats sizes: ")
-              println(stats.allStatsSize)
-              println(aggStats.allStatsSize)
               aggStats.merge(stats)
             }
             case None => {}
           }
 
           // Find best splits for non-leaves only
-          val featuresForNode = nodes(nodeIndex).aggStats match {
-            case Some(s) => {
-              println("using preloaded features")
-              assert(nodes(nodeIndex).features.isDefined)
-              nodes(nodeIndex).features
-            }
-            case None => nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
-              println("new features")
-              Some(nodeToFeatures(nodeIndex))
-            }
+          val featuresForNode = nodeToFeaturesBc.value.flatMap { nodeToFeatures =>
+            Some(nodeToFeatures(nodeIndex))
           }
 
           // find best split for each node
@@ -808,7 +775,6 @@ private[ml] object WahooRandomForest extends Logging {
         val nodeIndex = node.id
         val nodeInfo = treeToNodeToIndexInfo(treeIndex)(nodeIndex)
         val aggNodeIndex = nodeInfo.nodeIndexInGroup
-        // TODO option[]
         val (split: Split, stats: ImpurityStats, aggStats: DTStatsAggregator,
           featuresForNode: Option[Array[Int]]) =
           nodeToBestSplits(aggNodeIndex)
