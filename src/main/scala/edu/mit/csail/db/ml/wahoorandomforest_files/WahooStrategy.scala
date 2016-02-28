@@ -1,4 +1,4 @@
-package edu.mit.csail.db.ml.wahoo
+package org.apache.spark.ml.wahoo
 
 /**
   * Created by kathrynsiegel on 2/23/16.
@@ -6,6 +6,9 @@ package edu.mit.csail.db.ml.wahoo
 sealed trait Strategy
 case object OnlineStrategy extends Strategy
 case object BatchedStrategy extends Strategy
-case object RandomReplacementStrategy
+case object RandomReplacementStrategy extends Strategy
 
-private[wahoo] class WahooStrategy(val erf: Boolean, val strategy: Strategy)
+class WahooStrategy(val erf: Boolean, val strategy: Strategy) extends Serializable {
+  def isIncremental = (strategy == OnlineStrategy) &&
+    (strategy == BatchedStrategy)
+}

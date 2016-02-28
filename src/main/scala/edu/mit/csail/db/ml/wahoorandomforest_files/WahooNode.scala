@@ -245,7 +245,12 @@ private[wahoo] class LearningNode(
           }
         }
         case None => {
-          throw new Exception(s"Error in predictImpl.")
+          isLeaf = true
+          if (stats.valid) {
+            new LeafNode(prediction, impurity, impurityStats)
+          } else {
+            new LeafNode(stats.impurityCalculator.predict, -1.0, stats.impurityCalculator)
+          }
         }
       }
     }
@@ -284,8 +289,12 @@ private[wahoo] class LearningNode(
 
   def makeInternalNode: Unit = {
     gain = stats.gain
-    leftChild.get.makeNode
-    rightChild.get.makeNode
+    if (leftChild.isDefined) {
+      leftChild.get.makeNode
+    }
+    if (rightChild.isDefined) {
+      rightChild.get.makeNode
+    }
   }
 }
 

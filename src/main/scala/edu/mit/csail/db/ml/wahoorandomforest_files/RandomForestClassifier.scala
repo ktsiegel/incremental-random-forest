@@ -44,7 +44,7 @@ class RandomForestClassifier(override val uid: String)
 
   def this() = this(Identifiable.randomUID("rfc"))
 
-  var randomized = false
+  def wahooStrategy: WahooStrategy = null
 
   // Override parameter setters from parent trait for Java API compatibility.
 
@@ -113,7 +113,7 @@ class RandomForestClassifier(override val uid: String)
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
     val numFeatures = oldDataset.first().features.size
-    new RandomForestClassificationModel(trees, numFeatures, numClasses, null, null)
+    new RandomForestClassificationModel(trees, numFeatures, numClasses, None, None, wahooStrategy)
   }
 
   override def copy(extra: ParamMap): RandomForestClassifier = defaultCopy(extra)

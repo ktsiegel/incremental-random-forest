@@ -19,6 +19,8 @@ package org.apache.spark.ml.wahoo.tree
 
 import java.io.IOException
 
+import org.apache.spark.ml.wahoo.{WahooStrategy, Strategy}
+
 import scala.collection.mutable
 import scala.util.Random
 import org.apache.spark.Logging
@@ -48,7 +50,7 @@ private[ml] object WahooRandomForest extends Logging {
            numTrees: Int,
            featureSubsetStrategy: String,
            seed: Long,
-           erf: Boolean,
+           wahooStrategy: WahooStrategy,
            parentUID: Option[String] = None):
   (Array[DecisionTreeModel], Array[Array[Split]], DecisionTreeMetadata) = {
 
@@ -158,7 +160,7 @@ private[ml] object WahooRandomForest extends Logging {
       // Choose node splits, and enqueue new nodes as needed.
       timer.start("findBestSplits")
       WahooRandomForest.findBestSplits(baggedInput, metadata, topNodes, nodesForGroup,
-        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, erf)
+        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, wahooStrategy)
       timer.stop("findBestSplits")
     }
 
@@ -211,7 +213,7 @@ private[ml] object WahooRandomForest extends Logging {
            numTrees: Int,
            featureSubsetStrategy: String,
            seed: Long,
-           erf: Boolean,
+           wahooStrategy: WahooStrategy,
            splits: Array[Array[Split]],
            oldMetadata: DecisionTreeMetadata,
            parentUID: Option[String] = None): Array[DecisionTreeModel] = {
@@ -336,7 +338,7 @@ private[ml] object WahooRandomForest extends Logging {
       // Choose node splits, and enqueue new nodes as needed.
       timer.start("findBestSplits")
       WahooRandomForest.findBestSplits(baggedInput, metadata, topNodes, nodesForGroup,
-        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, erf)
+        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, wahooStrategy)
       timer.stop("findBestSplits")
     }
 
@@ -551,7 +553,7 @@ private[ml] object WahooRandomForest extends Logging {
                                     nodeQueue: mutable.Queue[(Int, LearningNode)],
                                     timer: TimeTracker = new TimeTracker,
                                     nodeIdCache: Option[NodeIdCache] = None,
-                                    erf: Boolean): Unit = {
+                                    wahooStrategy: WahooStrategy): Unit = {
 
     /*
      * The high-level descriptions of the best split optimizations are noted here.
@@ -739,11 +741,13 @@ private[ml] object WahooRandomForest extends Logging {
         } else {
           // For online random forests, we merge in stats from points from
           // previous batches.
-          nodes(nodeIndex).aggStats match {
-            case Some(stats) => {
-              aggStats.merge(stats)
+          if (wahooStrategy.isIncremental) {
+            nodes(nodeIndex).aggStats match {
+              case Some(stats) => {
+                aggStats.merge(stats)
+              }
+              case None => {}
             }
-            case None => {}
           }
 
           // Find best splits for non-leaves only
@@ -752,7 +756,7 @@ private[ml] object WahooRandomForest extends Logging {
           }
 
           // find best split for each node
-          val (split: Split, stats: ImpurityStats) = if (erf) {
+          val (split: Split, stats: ImpurityStats) = if (wahooStrategy.erf) {
             binsToBestSplitRandomized(aggStats, splits, featuresForNode, nodes(nodeIndex))
           } else {
             binsToBestSplit(aggStats, splits, featuresForNode, nodes(nodeIndex))
@@ -787,11 +791,11 @@ private[ml] object WahooRandomForest extends Logging {
         node.stats = stats
         logDebug("Node = " + node)
 
-        if (isLeaf && erf) {
+        if (isLeaf && wahooStrategy.isIncremental) {
           node.aggStats = Some(aggStats)
           node.features = featuresForNode
         }
-        else {
+        else if (!isLeaf) {
           node.split = Some(split)
           val childIsLeaf = (LearningNode.indexToLevel(nodeIndex) + 1) == metadata.maxDepth
           val leftChildIsLeaf = childIsLeaf || (stats.leftImpurity == 0.0)
@@ -812,8 +816,12 @@ private[ml] object WahooRandomForest extends Logging {
           // If the child is a leaf, then we still add it back to the queue. On the
           // next iteration, we just collect aggregate stats for this leaf child
           // without calculating any splits.
-          nodeQueue.enqueue((treeIndex, node.leftChild.get))
-          nodeQueue.enqueue((treeIndex, node.rightChild.get))
+          if (wahooStrategy.isIncremental || !leftChildIsLeaf) {
+            nodeQueue.enqueue((treeIndex, node.leftChild.get))
+          }
+          if (wahooStrategy.isIncremental || !rightChildIsLeaf) {
+            nodeQueue.enqueue((treeIndex, node.rightChild.get))
+          }
 
           logDebug("leftChildIndex = " + node.leftChild.get.id +
             ", impurity = " + stats.leftImpurity)
