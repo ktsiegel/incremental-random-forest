@@ -17,6 +17,7 @@
 
 package org.apache.spark.ml.wahoo
 
+import org.apache.spark.SparkContext
 import org.apache.spark.annotation.Experimental
 import org.apache.spark.ml.classification.ProbabilisticClassifier
 import org.apache.spark.ml.tree.{TreeClassifierParams, RandomForestParams}
@@ -44,7 +45,9 @@ class RandomForestClassifier(override val uid: String)
 
   def this() = this(Identifiable.randomUID("rfc"))
 
-  def wahooStrategy: WahooStrategy = null
+  var wahooStrategy: WahooStrategy = null
+
+  var sc: Option[SparkContext] = null
 
   // Override parameter setters from parent trait for Java API compatibility.
 

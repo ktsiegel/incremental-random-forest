@@ -1,8 +1,11 @@
-package edu.mit.csail.db.ml.benchmarks.wahoo
+package org.apache.spark.ml.wahoo
 
-import org.apache.spark.ml.wahoo.{RandomForestClassificationModel, WahooRandomForestClassifier}
+import edu.mit.csail.db.ml.benchmarks.wahoo.WahooUtils
+import org.apache.spark.{SparkContext, SparkConf}
+import org.apache.spark.mllib.tree.impl.TimeTracker
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.types._
+import scala.collection.mutable.ArrayBuffer
 
 /**
   * Created by kathrynsiegel on 2/15/16.
@@ -14,8 +17,12 @@ object WahooRandomForestIncremental {
     } else {
       args(0)
     }
-
-    var df: DataFrame = WahooUtils.readData(trainingDataPath, "Wahoo", "local[2]")
+    val conf = new SparkConf()
+      .setAppName("Wahoo")
+      .setMaster("local[2]")
+      .set("spark.driver.allowMultipleContexts", "true")
+    val sc = new SparkContext(conf)
+    var df: DataFrame = WahooUtils.readData(trainingDataPath, sc)
     df = WahooUtils.processIntColumns(df)
     val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
     val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
@@ -26,71 +33,44 @@ object WahooRandomForestIncremental {
     val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray ++ stringFields.map(_.name + "_vec"))
     df = WahooUtils.processDataFrame(df, stringProcesser :+ indexer :+ assembler)
 
-    // var df: DataFrame = WahooUtils.readData(trainingDataPath, "Wahoo", "local[2]")
-    // df = WahooUtils.processIntColumn("QuoteConversion_Flag", df)
-    // val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
-    // val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
-    // val numericFields = WahooUtils.getNumericFields(df)
-    // val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
-    // df = WahooUtils.processDataFrame(df, Array(indexer, assembler))
-
-
     val rf = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(5)
+      .setNumTrees(10)
 
-    // rf.wahooStrategy =
+    rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
+    // rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
+    rf.sc = Some(sc)
 
-    // Split into training and testing data
-    val Array(train1, train2, train3, train4, train5, train6, train7, testing) = df.randomSplit(Array(0.2, 0.1, 0.1, 0.1, 0.1, 0.1, 0.1, 0.2))
-
-    // Model 1 - trained on first batch of data
-    val model1: RandomForestClassificationModel = rf.fit(train1)
-    var predictions = model1.transform(testing)
+    println("Small initial base compared to update batches (1:1)")
+    val numBatches = 10
+    val a2: ArrayBuffer[Double] = new ArrayBuffer[Double]()
+    Range(0, numBatches).map { i =>
+      a2 += (1.0/10000.0)
+    }
+    a2 += 20.0/100.0
+    val train2 = df.randomSplit(a2.toArray)
+    var timer = new TimeTracker()
+    var currDF2 = train2(0)
+    var numPoints = currDF2.count()
+    println(numPoints)
+    timer.start("training 0")
+    val model: RandomForestClassificationModel = rf.fit(currDF2)
+    var time = timer.stop("training 0")
+    var predictions = model.transform(train2.last)
     var accuracy = evaluator.evaluate(predictions)
-    println("test error after being trained on data batch 1: " + (1.0 - accuracy))
-
-    // Model 2 - trained using more trees
-   //  val model2 = rf.addTrees(model1, train1, 10)
-   //  predictions = model2.transform(testing)
-   //  accuracy = evaluator.evaluate(predictions)
-   //  println("test error after adding more trees: " + (1.0 - accuracy))
-
-    // Model 3 - trained on first and second batches of data
-    val model3 = rf.update(model1, train2)
-    predictions = model3.transform(testing)
-    accuracy = evaluator.evaluate(predictions)
-    println("test error after being trained on data batches 1 and 2: " + (1.0 - accuracy))
-//
-//     // Model 4 - trained on data batches 1-3
-//     val train123: DataFrame = train12.unionAll(train3)
-//     predictions = forest.transform(train123)
-//     accuracy = evaluator.evaluate(predictions)
-//     println("test error after being trained on data batches 1-3: " + (1.0 - accuracy))
-//
-//     // Model 5 - trained on data batches 1-4
-//     val train1234: DataFrame = train123.unionAll(train4)
-//     predictions = forest.transform(train1234)
-//     accuracy = evaluator.evaluate(predictions)
-//     println("test error after being trained on data batches 1-4: " + (1.0 - accuracy))
-//
-//     // Model 6 - trained on data batches 1-5
-//     val train12345: DataFrame = train1234.unionAll(train5)
-//     predictions = forest.transform(train12345)
-//     accuracy = evaluator.evaluate(predictions)
-//     println("test error after being trained on data batches 1-5: " + (1.0 - accuracy))
-//
-//     // Model 7 - trained on data batches 1-6
-//     val train123456: DataFrame = train12345.unionAll(train6)
-//     predictions = forest.transform(train123456)
-//     accuracy = evaluator.evaluate(predictions)
-//     println("test error after being trained on data batches 1-6: " + (1.0 - accuracy))
-//
-//     // Model 8 - trained on data batches 1-7
-//     val train1234567: DataFrame = train123456.unionAll(train7)
-//     predictions = forest.transform(train1234567)
-//     accuracy = evaluator.evaluate(predictions)
-    // println("test error after being trained on data batches 1-7: " + (1.0 - accuracy))
+    println(time)
+    println(1.0 - accuracy)
+    Range(1,numBatches).map { batch => {
+      numPoints += train2(batch).count()
+      println(numPoints)
+      timer.start("training " + batch)
+      val modelUpdated = rf.update(model, train2(batch))
+      time = timer.stop("training " + batch)
+      predictions = modelUpdated.transform(train2.last)
+      accuracy = evaluator.evaluate(predictions)
+      println(time)
+      println(1.0 - accuracy)
+    }}
   }
 }

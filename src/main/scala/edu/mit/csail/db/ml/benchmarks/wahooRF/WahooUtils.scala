@@ -4,20 +4,15 @@ import org.apache.spark.ml.{Transformer, Estimator, PipelineStage}
 import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.ml.feature.{VectorAssembler, OneHotEncoder, StringIndexer}
 import org.apache.spark.sql.types.{StringType, StructField, DoubleType, IntegerType}
-import org.apache.spark.{SparkConf, SparkContext}
+import org.apache.spark.SparkContext
 import org.apache.spark.sql.{SQLContext, DataFrame}
 
 /**
   * Created by kathrynsiegel on 2/21/16.
   */
 object WahooUtils {
-  def readData(trainingDataPath: String, appName: String, master: String): DataFrame = {
+  def readData(trainingDataPath: String, sc: SparkContext): DataFrame = {
     // set up contexts
-    val conf = new SparkConf()
-      .setAppName(appName)
-      .setMaster(master)
-      .set("spark.driver.allowMultipleContexts", "true")
-    val sc = new SparkContext(conf)
     val sqlContext = new SQLContext(sc)
 
     // Read data and convert to dataframe

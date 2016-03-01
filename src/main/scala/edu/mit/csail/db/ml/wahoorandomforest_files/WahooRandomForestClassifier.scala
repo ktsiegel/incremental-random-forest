@@ -21,7 +21,8 @@ import org.apache.spark.sql.functions._
  * classifier class from Spark ML.
  */
 class WahooRandomForestClassifier(override val uid: String) extends RandomForestClassifier {
-  override def wahooStrategy: WahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
+
+  this.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
 
   def this() = this(Identifiable.randomUID("rfc"))
 
@@ -112,14 +113,30 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     if (wahooStrategy.isIncremental) {
       assert(oldModel.splits.isDefined && oldModel.metadata.isDefined,
         "Error, the old model was not trained with an incremental strategy.")
-      val trees =
-        WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy,
+      if (wahooStrategy.strategy == OnlineStrategy) {
+        var tempModel = oldModel
+        oldDataset.foreach(point => {
+          assert(sc.isDefined, "SparkContext must be defined")
+          val tempDataset = sc.get.parallelize(Array(point))
+          val trees = WahooRandomForest.runAndUpdateClassifier(oldModel._trees, tempDataset, strategy,
+            getNumTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
+            oldModel.metadata.get)
+            .map(_.asInstanceOf[DecisionTreeClassificationModel])
+
+          tempModel = new RandomForestClassificationModel(trees, numFeatures, numClasses,
+          oldModel.splits, oldModel.metadata, wahooStrategy)
+        })
+        tempModel
+      } else {
+        val trees = WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy,
           getNumTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
           oldModel.metadata.get)
           .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
-      new RandomForestClassificationModel(trees, numFeatures, numClasses,
-        oldModel.splits, oldModel.metadata, wahooStrategy)
+        new RandomForestClassificationModel(trees, numFeatures, numClasses,
+          oldModel.splits, oldModel.metadata, wahooStrategy)
+      }
+
     } else {
       // TODO randomly remove trees
       val swappedTrees = oldModel.metadata match {
