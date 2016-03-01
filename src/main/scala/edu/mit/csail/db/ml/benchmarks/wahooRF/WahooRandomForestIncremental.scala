@@ -1,6 +1,7 @@
 package org.apache.spark.ml.wahoo
 
 import edu.mit.csail.db.ml.benchmarks.wahoo.WahooUtils
+import org.apache.spark.ml.evaluation.MulticlassClassificationEvaluator
 import org.apache.spark.{SparkContext, SparkConf}
 import org.apache.spark.mllib.tree.impl.TimeTracker
 import org.apache.spark.sql.DataFrame
@@ -24,50 +25,103 @@ object WahooRandomForestIncremental {
     val sc = new SparkContext(conf)
     var df: DataFrame = WahooUtils.readData(trainingDataPath, sc)
     df = WahooUtils.processIntColumns(df)
+    df.show()
+    df.printSchema()
     val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
+    // val indexer = WahooUtils.createStringIndexer("Survived", "label")
     val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
+    // val evaluator = WahooUtils.createEvaluator("Survived", "prediction")
     val numericFields = WahooUtils.getNumericFields(df)
     val stringFields: Seq[StructField] = WahooUtils.getStringFields(df,
-        Some(Array("Field6", "Field12", "CoverageField8", "CoverageField9")))
+      Some(Array("Field6", "Field12", "CoverageField8", "CoverageField9")))
+      // Some(Array("Sex", "Embarked")))
     val stringProcesser = WahooUtils.processStringColumns(df, stringFields)
     val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray ++ stringFields.map(_.name + "_vec"))
     df = WahooUtils.processDataFrame(df, stringProcesser :+ indexer :+ assembler)
 
-    val rf = new WahooRandomForestClassifier()
+    val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
       .setNumTrees(10)
-
-    rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    // rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
     rf.sc = Some(sc)
 
-    println("Small initial base compared to update batches (1:1)")
-    val numBatches = 10
-    val a2: ArrayBuffer[Double] = new ArrayBuffer[Double]()
+    println("batched strategy")
+    rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
+    runBenchmark(rf, df, evaluator, 8.0)
+    println("online strategy")
+    rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
+    runBenchmark(rf, df, evaluator, 8.0)
+    println("random replacement strategy")
+    rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
+    runBenchmark(rf, df, evaluator, 8.0)
+    println("control")
+    runControlBenchmark(rf, df, evaluator, 8.0)
+  }
+
+  def runBenchmark(rf: RandomForestClassifier, df: DataFrame,
+                   evaluator: MulticlassClassificationEvaluator,
+                   batchSizeConstant: Double) {
+    val numBatches = 6
+    val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
     Range(0, numBatches).map { i =>
-      a2 += (1.0/10000.0)
+      batchWeights += (1.0/batchSizeConstant)
     }
-    a2 += 20.0/100.0
-    val train2 = df.randomSplit(a2.toArray)
-    var timer = new TimeTracker()
-    var currDF2 = train2(0)
-    var numPoints = currDF2.count()
+    batchWeights += 0.2
+
+    val batches = df.randomSplit(batchWeights.toArray)
+    val timer = new TimeTracker()
+    var numPoints = batches(0).count()
     println(numPoints)
     timer.start("training 0")
-    val model: RandomForestClassificationModel = rf.fit(currDF2)
+    val model: RandomForestClassificationModel = rf.fit(batches(0))
     var time = timer.stop("training 0")
-    var predictions = model.transform(train2.last)
+    var predictions = model.transform(batches.last)
     var accuracy = evaluator.evaluate(predictions)
     println(time)
     println(1.0 - accuracy)
     Range(1,numBatches).map { batch => {
-      numPoints += train2(batch).count()
+      numPoints += batches(batch).count()
       println(numPoints)
       timer.start("training " + batch)
-      val modelUpdated = rf.update(model, train2(batch))
+      val modelUpdated = rf.update(model, batches(batch))
       time = timer.stop("training " + batch)
-      predictions = modelUpdated.transform(train2.last)
+      predictions = modelUpdated.transform(batches.last)
+      accuracy = evaluator.evaluate(predictions)
+      println(time)
+      println(1.0 - accuracy)
+    }}
+  }
+
+
+  def runControlBenchmark(rf: RandomForestClassifier, df: DataFrame,
+                   evaluator: MulticlassClassificationEvaluator,
+                   batchSizeConstant: Double) {
+    val numBatches = 6
+    val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
+    Range(0, numBatches).map { i =>
+      batchWeights += (1.0/batchSizeConstant)
+    }
+    batchWeights += 0.2
+    val batches = df.randomSplit(batchWeights.toArray)
+    val timer = new TimeTracker()
+    var currDF = batches(0)
+    var numPoints = currDF.count()
+    println(numPoints)
+    timer.start("training 0")
+    val model: RandomForestClassificationModel = rf.fit(currDF)
+    var time = timer.stop("training 0")
+    var predictions = model.transform(batches.last)
+    var accuracy = evaluator.evaluate(predictions)
+    println(time)
+    println(1.0 - accuracy)
+    Range(1,numBatches).map { batch => {
+      numPoints += batches(batch).count()
+      println(numPoints)
+      currDF = currDF.unionAll(batches(batch))
+      timer.start("training " + batch)
+      val modelUpdated = rf.fit(currDF)
+      time = timer.stop("training " + batch)
+      predictions = modelUpdated.transform(batches.last)
       accuracy = evaluator.evaluate(predictions)
       println(time)
       println(1.0 - accuracy)
