@@ -9,6 +9,6 @@ case object BatchedStrategy extends Strategy
 case object RandomReplacementStrategy extends Strategy
 
 class WahooStrategy(val erf: Boolean, val strategy: Strategy) extends Serializable {
-  def isIncremental = (strategy == OnlineStrategy) &&
+  def isIncremental = (strategy == OnlineStrategy) ||
     (strategy == BatchedStrategy)
 }

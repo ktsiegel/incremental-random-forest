@@ -740,13 +740,14 @@ private[ml] object WahooRandomForest extends Logging {
           (nodeIndex, (None, None, aggStats))
         } else {
           // For online random forests, we merge in stats from points from
-          // previous batches.
+          // previous batch.
           if (wahooStrategy.isIncremental) {
             nodes(nodeIndex).aggStats match {
               case Some(stats) => {
                 aggStats.merge(stats)
               }
-              case None => {}
+              case None => {
+							}
             }
           }
 
@@ -761,6 +762,7 @@ private[ml] object WahooRandomForest extends Logging {
           } else {
             binsToBestSplit(aggStats, splits, featuresForNode, nodes(nodeIndex))
           }
+					
           (nodeIndex, (split, stats, aggStats, featuresForNode))
         }
     }.collectAsMap()
@@ -786,9 +788,9 @@ private[ml] object WahooRandomForest extends Logging {
 
         // Extract info for this node.  Create children if not leaf.
         val isLeaf = node.isLeaf ||
-          (stats.gain <= 0) || (LearningNode.indexToLevel(nodeIndex) == metadata.maxDepth)
+          (stats.gain <= 0) || (LearningNode.indexToLevel(nodeIndex) >= metadata.maxDepth)
         node.isLeaf = isLeaf
-        node.stats = stats
+				node.stats = stats
         logDebug("Node = " + node)
 
         if (isLeaf && wahooStrategy.isIncremental) {
@@ -797,7 +799,7 @@ private[ml] object WahooRandomForest extends Logging {
         }
         else if (!isLeaf) {
           node.split = Some(split)
-          val childIsLeaf = (LearningNode.indexToLevel(nodeIndex) + 1) == metadata.maxDepth
+          val childIsLeaf = (LearningNode.indexToLevel(nodeIndex) + 1) >= metadata.maxDepth
           val leftChildIsLeaf = childIsLeaf || (stats.leftImpurity == 0.0)
           val rightChildIsLeaf = childIsLeaf || (stats.rightImpurity == 0.0)
           node.leftChild = Some(LearningNode(LearningNode.leftChildIndex(nodeIndex),
@@ -876,7 +878,6 @@ private[ml] object WahooRandomForest extends Logging {
       (rightCount < metadata.minInstancesPerNode)) {
       return ImpurityStats.getInvalidImpurityStats(parentImpurityCalculator)
     }
-
     val leftImpurity = leftImpurityCalculator.calculate() // Note: This equals 0 if count = 0
     val rightImpurity = rightImpurityCalculator.calculate()
 

@@ -176,7 +176,6 @@ private[wahoo] class LearningNode(
   }
 
   override private[wahoo] def subtreeToString(indentFactor: Int = 0): String = {
-    assert(isDone)
     if (isLeaf) {
       val prefix: String = " " * indentFactor
       prefix + s"Predict: $prediction\n"
@@ -245,12 +244,7 @@ private[wahoo] class LearningNode(
           }
         }
         case None => {
-          isLeaf = true
-          if (stats.valid) {
-            new LeafNode(prediction, impurity, impurityStats)
-          } else {
-            new LeafNode(stats.impurityCalculator.predict, -1.0, stats.impurityCalculator)
-          }
+    			throw new IllegalArgumentException(s"Node should be labeled as leaf.")
         }
       }
     }

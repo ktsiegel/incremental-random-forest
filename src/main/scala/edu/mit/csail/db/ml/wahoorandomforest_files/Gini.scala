@@ -135,7 +135,9 @@ private[spark] class GiniCalculator(stats: Array[Double]) extends ImpurityCalcul
   /**
     * Calculate the impurity from the stored sufficient statistics.
     */
-  def calculate(): Double = Gini.calculate(stats, stats.sum)
+  def calculate(): Double = {
+		Gini.calculate(stats, stats.sum)
+	}
 
   /**
     * Number of data points accounted for in the sufficient statistics.
@@ -146,7 +148,8 @@ private[spark] class GiniCalculator(stats: Array[Double]) extends ImpurityCalcul
     * Prediction which should be made based on the sufficient statistics.
     */
   def predict: Double = if (count == 0) {
-    0
+		println("gini predicts -1")
+    -1
   } else {
     indexOfLargestArrayElement(stats)
   }

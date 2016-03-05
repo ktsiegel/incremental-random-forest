@@ -25,16 +25,11 @@ object WahooRandomForestIncremental {
     val sc = new SparkContext(conf)
     var df: DataFrame = WahooUtils.readData(trainingDataPath, sc)
     df = WahooUtils.processIntColumns(df)
-    df.show()
-    df.printSchema()
     val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
-    // val indexer = WahooUtils.createStringIndexer("Survived", "label")
     val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
-    // val evaluator = WahooUtils.createEvaluator("Survived", "prediction")
-    val numericFields = WahooUtils.getNumericFields(df)
+    val numericFields = WahooUtils.getNumericFields(df, "QuoteConversion_Flag")
     val stringFields: Seq[StructField] = WahooUtils.getStringFields(df,
       Some(Array("Field6", "Field12", "CoverageField8", "CoverageField9")))
-      // Some(Array("Sex", "Embarked")))
     val stringProcesser = WahooUtils.processStringColumns(df, stringFields)
     val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray ++ stringFields.map(_.name + "_vec"))
     df = WahooUtils.processDataFrame(df, stringProcesser :+ indexer :+ assembler)
@@ -43,30 +38,33 @@ object WahooRandomForestIncremental {
       .setLabelCol("label")
       .setFeaturesCol("features")
       .setNumTrees(10)
+			.setMaxDepth(10)
     rf.sc = Some(sc)
 
     println("batched strategy")
     rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    runBenchmark(rf, df, evaluator, 8.0)
-    println("online strategy")
-    rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    runBenchmark(rf, df, evaluator, 8.0)
-    println("random replacement strategy")
-    rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
-    runBenchmark(rf, df, evaluator, 8.0)
-    println("control")
-    runControlBenchmark(rf, df, evaluator, 8.0)
+    runBenchmark(rf, df, evaluator, 10.0, 5, 10, 2)
+    // println("online strategy")
+    // rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
+    // runBenchmark(rf, df, evaluator, 8.0)
+    // println("random replacement strategy")
+    // rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
+    // runBenchmark(rf, df, evaluator, 8.0)
+    // println("control")
+    // runControlBenchmark(rf, df, evaluator, 8.0)
   }
 
   def runBenchmark(rf: RandomForestClassifier, df: DataFrame,
                    evaluator: MulticlassClassificationEvaluator,
-                   batchSizeConstant: Double) {
-    val numBatches = 6
+                   batchSizeConstant: Double,
+									 numBatches: Int,
+									 initialHeight: Int,
+									 incrementParam: Int) {
     val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
     Range(0, numBatches).map { i =>
       batchWeights += (1.0/batchSizeConstant)
     }
-    batchWeights += 0.2
+    batchWeights += 2.0/batchSizeConstant
 
     val batches = df.randomSplit(batchWeights.toArray)
     val timer = new TimeTracker()
@@ -79,6 +77,7 @@ object WahooRandomForestIncremental {
     var accuracy = evaluator.evaluate(predictions)
     println(time)
     println(1.0 - accuracy)
+		var currDepth = initialHeight + incrementParam
     Range(1,numBatches).map { batch => {
       numPoints += batches(batch).count()
       println(numPoints)
@@ -87,8 +86,10 @@ object WahooRandomForestIncremental {
       time = timer.stop("training " + batch)
       predictions = modelUpdated.transform(batches.last)
       accuracy = evaluator.evaluate(predictions)
-      println(time)
-      println(1.0 - accuracy)
+      println("time: " + time)
+      println("error: " + (1.0 - accuracy))
+			rf.setMaxDepth(currDepth)
+			currDepth += incrementParam
     }}
   }
 

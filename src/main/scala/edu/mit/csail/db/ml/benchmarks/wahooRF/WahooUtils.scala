@@ -73,9 +73,9 @@ object WahooUtils {
     makeIndexers(fields) ++ makeEncoders(fields)
   }
 
-  def getNumericFields(dataset: DataFrame): Seq[StructField] = {
+  def getNumericFields(dataset: DataFrame, label: String): Seq[StructField] = {
     dataset.schema.filter( entry =>
-      entry.dataType == DoubleType)
+      entry.dataType == DoubleType && entry.name != label)
   }
 
   def getStringFields(dataset: DataFrame, names: Option[Array[String]]): Seq[StructField] = {
