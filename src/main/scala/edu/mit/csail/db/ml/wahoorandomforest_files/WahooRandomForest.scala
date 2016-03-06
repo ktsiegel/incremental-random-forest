@@ -786,6 +786,12 @@ private[ml] object WahooRandomForest extends Logging {
           nodeToBestSplits(aggNodeIndex)
         logDebug("best split = " + split)
 
+				// TODO fix node level
+				// println("is leaf before: " + node.isLeaf)
+				// println("node level: " + LearningNode.indexToLevel(nodeIndex))
+				// println("metadata max depth: " + metadata.maxDepth)
+				// println("gain: " + stats.gain)
+
         // Extract info for this node.  Create children if not leaf.
         val isLeaf = node.isLeaf ||
           (stats.gain <= 0) || (LearningNode.indexToLevel(nodeIndex) >= metadata.maxDepth)

@@ -11,9 +11,8 @@ import org.apache.spark.sql.{SQLContext, DataFrame}
   * Created by kathrynsiegel on 2/21/16.
   */
 object WahooUtils {
-  def readData(trainingDataPath: String, sc: SparkContext): DataFrame = {
+  def readData(trainingDataPath: String, sqlContext: SQLContext): DataFrame = {
     // set up contexts
-    val sqlContext = new SQLContext(sc)
 
     // Read data and convert to dataframe
     sqlContext.read

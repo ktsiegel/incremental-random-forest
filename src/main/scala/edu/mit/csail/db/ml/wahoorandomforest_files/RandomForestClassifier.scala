@@ -47,8 +47,6 @@ class RandomForestClassifier(override val uid: String)
 
   var wahooStrategy: WahooStrategy = null
 
-  var sc: Option[SparkContext] = null
-
   // Override parameter setters from parent trait for Java API compatibility.
 
   // Parameters from TreeClassifierParams:

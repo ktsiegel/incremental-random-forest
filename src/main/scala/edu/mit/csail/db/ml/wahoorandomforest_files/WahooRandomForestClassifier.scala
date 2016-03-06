@@ -61,6 +61,7 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     // Use classification
     val strategy =
       super.getOldStrategy(categoricalFeatures, numClasses, OldAlgo.Classification, getOldImpurity)
+		println("strategy uses node id cache: " + strategy.useNodeIdCache)
 
     val numFeatures = oldDataset.first().features.size
 
@@ -112,30 +113,14 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
 
     if (wahooStrategy.isIncremental) {
       assert(oldModel.splits.isDefined && oldModel.metadata.isDefined,
-        "Error, the old model was not trained with an incremental strategy.")
-      if (wahooStrategy.strategy == OnlineStrategy) {
-        var tempModel = oldModel
-        oldDataset.foreach(point => {
-          assert(sc.isDefined, "SparkContext must be defined")
-          val tempDataset = sc.get.parallelize(Array(point))
-          val trees = WahooRandomForest.runAndUpdateClassifier(oldModel._trees, tempDataset, strategy,
-            getNumTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
-            oldModel.metadata.get)
-            .map(_.asInstanceOf[DecisionTreeClassificationModel])
+      	"Error, the old model was not trained with an incremental strategy.")
+      val trees = WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy,
+        getNumTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
+        oldModel.metadata.get)
+        .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
-          tempModel = new RandomForestClassificationModel(trees, numFeatures, numClasses,
+      new RandomForestClassificationModel(trees, numFeatures, numClasses,
           oldModel.splits, oldModel.metadata, wahooStrategy)
-        })
-        tempModel
-      } else {
-        val trees = WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy,
-          getNumTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
-          oldModel.metadata.get)
-          .map(_.asInstanceOf[DecisionTreeClassificationModel])
-
-        new RandomForestClassificationModel(trees, numFeatures, numClasses,
-          oldModel.splits, oldModel.metadata, wahooStrategy)
-      }
 
     } else {
       // TODO randomly remove trees

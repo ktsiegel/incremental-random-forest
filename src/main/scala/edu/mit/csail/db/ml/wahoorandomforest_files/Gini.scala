@@ -148,7 +148,6 @@ private[spark] class GiniCalculator(stats: Array[Double]) extends ImpurityCalcul
     * Prediction which should be made based on the sufficient statistics.
     */
   def predict: Double = if (count == 0) {
-		println("gini predicts -1")
     -1
   } else {
     indexOfLargestArrayElement(stats)
