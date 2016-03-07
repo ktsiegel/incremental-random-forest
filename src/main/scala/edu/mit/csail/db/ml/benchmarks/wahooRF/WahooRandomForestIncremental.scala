@@ -40,12 +40,12 @@ object WahooRandomForestIncremental {
       .setFeaturesCol("features")
       .setNumTrees(10)
 
-    // println("batched strategy")
-    // rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    // runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5)
-    // println("online strategy")
-    // rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    // runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5, sc, sqlContext)
+    println("batched strategy")
+    rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
+    runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5)
+    println("online strategy")
+    rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
+    runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5, sc, sqlContext)
     println("random replacement strategy")
     rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
     runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5, sc, sqlContext)
@@ -77,11 +77,14 @@ object WahooRandomForestIncremental {
     var time = timer.stop("training 0")
     var predictions = model.transform(batches.last)
     var accuracy = evaluator.evaluate(predictions)
+    println("num points: " + numPoints)
     println("time: " + time)
     println("accuracy: " + (1.0 - accuracy))
 		var currDepth = initialDepth + incrementParam
     Range(1,numBatches).map { batch => {
-			rf.setMaxDepth(currDepth)
+      if (rf.wahooStrategy.isIncremental) {
+			  rf.setMaxDepth(currDepth)
+      }
       numPoints += batches(batch).count()
       timer.start("training " + batch)
 			val modelUpdated = if (rf.wahooStrategy == OnlineStrategy) {
@@ -98,9 +101,12 @@ object WahooRandomForestIncremental {
       time = timer.stop("training " + batch)
       predictions = modelUpdated.transform(batches.last)
       accuracy = evaluator.evaluate(predictions)
+      println("num points: " + numPoints)
       println("time: " + time)
       println("error: " + (1.0 - accuracy))
-			currDepth += incrementParam
+      if (rf.wahooStrategy.isIncremental) {
+			  currDepth += incrementParam
+      }
     }}
   }
 
