@@ -87,13 +87,12 @@ object WahooRandomForestIncremental {
 			val modelUpdated = if (rf.wahooStrategy == OnlineStrategy) {
 				var tempModel = model
 				batches(batch).foreach(point => {
-					import org.apache.spark.sql.Row
 					val pointDataset = sc.parallelize(Array(point))
 					val pDF = sqlContext.createDataFrame(pointDataset, df.schema)
 					tempModel = rf.update(model, pDF)
 				})
 				tempModel
-			} else {
+			} else if (rf.wahooStrategy == BatchedStrategy) {
       	rf.update(model, batches(batch))
 			}
       time = timer.stop("training " + batch)
