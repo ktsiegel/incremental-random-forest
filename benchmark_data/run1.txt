@@ -1,0 +1,37 @@
+random replacement strategy
+strategy uses node id cache: false
+num points: 37165
+time: 202.504858381
+accuracy: 0.12957999410329946
+strategy uses node id cache: false
+num points: 74332
+time: 212.353124709
+error: 0.12350907287785784
+strategy uses node id cache: false
+num points: 111251
+time: 212.240213761
+error: 0.1194617920608968
+strategy uses node id cache: false
+num points: 148657
+time: 211.283543489
+error: 0.11687528478383236
+strategy uses node id cache: false
+num points: 186135
+time: 210.633056549
+error: 0.11520008577018948
+control
+strategy uses node id cache: false
+198.292134733
+0.13078611735868872
+strategy uses node id cache: false
+384.356506122
+0.1296009481353787
+strategy uses node id cache: false
+583.727772269
+0.13277935650698303
+strategy uses node id cache: false
+770.055543985
+0.13271201734656768
+strategy uses node id cache: false
+960.073925802
+0.133142987973226

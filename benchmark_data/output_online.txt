@@ -1,0 +1,14 @@
+online strategy
+strategy uses node id cache: false
+time: 191.467009853
+accuracy: 0.13530915759741913
+time: 141.24787598
+error: 0.13310041096073788
+time: 179.148065479
+error: 0.133823273496379
+time: 221.20349425
+error: 0.1334886149150637
+time: 258.754470818
+error: 0.13394375058565255
+random replacement strategy
+strategy uses node id cache: false
