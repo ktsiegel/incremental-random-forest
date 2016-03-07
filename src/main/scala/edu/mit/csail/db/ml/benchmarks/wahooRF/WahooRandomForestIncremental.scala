@@ -73,7 +73,7 @@ object WahooRandomForestIncremental {
     val timer = new TimeTracker()
     var numPoints = batches(0).count()
     timer.start("training 0")
-    val model: RandomForestClassificationModel = rf.fit(batches(0))
+    val model = rf.fit(batches(0))
     var time = timer.stop("training 0")
     var predictions = model.transform(batches.last)
     var accuracy = evaluator.evaluate(predictions)
@@ -85,16 +85,16 @@ object WahooRandomForestIncremental {
       numPoints += batches(batch).count()
       timer.start("training " + batch)
 			val modelUpdated = if (rf.wahooStrategy == OnlineStrategy) {
-				var tempModel = model
-				batches(batch).foreach(point => {
-					val pointDataset = sc.parallelize(Array(point))
-					val pDF = sqlContext.createDataFrame(pointDataset, df.schema)
-					tempModel = rf.update(model, pDF)
-				})
-				tempModel
-			} else if (rf.wahooStrategy == BatchedStrategy) {
+        var tempModel = model
+        batches(batch).foreach(point => {
+          val pointDataset = sc.parallelize(Array(point))
+          val pDF = sqlContext.createDataFrame(pointDataset, df.schema)
+          tempModel = rf.update(model, pDF)
+        })
+        tempModel
+      } else {
       	rf.update(model, batches(batch))
-			}
+      }
       time = timer.stop("training " + batch)
       predictions = modelUpdated.transform(batches.last)
       accuracy = evaluator.evaluate(predictions)
