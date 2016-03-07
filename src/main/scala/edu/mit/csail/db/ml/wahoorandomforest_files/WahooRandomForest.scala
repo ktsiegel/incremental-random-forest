@@ -799,7 +799,7 @@ private[ml] object WahooRandomForest extends Logging {
 				node.stats = stats
         logDebug("Node = " + node)
 
-        if (isLeaf && wahooStrategy.isIncremental) {
+        if (isLeaf) {
           node.aggStats = Some(aggStats)
           node.features = featuresForNode
         }
@@ -824,12 +824,8 @@ private[ml] object WahooRandomForest extends Logging {
           // If the child is a leaf, then we still add it back to the queue. On the
           // next iteration, we just collect aggregate stats for this leaf child
           // without calculating any splits.
-          if (wahooStrategy.isIncremental || !leftChildIsLeaf) {
-            nodeQueue.enqueue((treeIndex, node.leftChild.get))
-          }
-          if (wahooStrategy.isIncremental || !rightChildIsLeaf) {
-            nodeQueue.enqueue((treeIndex, node.rightChild.get))
-          }
+          nodeQueue.enqueue((treeIndex, node.leftChild.get))
+          nodeQueue.enqueue((treeIndex, node.rightChild.get))
 
           logDebug("leftChildIndex = " + node.leftChild.get.id +
             ", impurity = " + stats.leftImpurity)
