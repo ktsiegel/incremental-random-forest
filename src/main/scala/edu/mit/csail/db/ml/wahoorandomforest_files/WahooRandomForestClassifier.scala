@@ -124,10 +124,10 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
 
     } else {
       // TODO randomly remove trees
+      val numNewPoints = dataset.count()
       val swappedTrees = oldModel.metadata match {
         case Some(m) => {
           val numOldPoints = m.numExamples
-          val numNewPoints = dataset.count().asInstanceOf[Double]
           val numOldTrees = oldModel.numTrees
           val count = numNewPoints / (numOldPoints + numNewPoints) * numOldTrees
           count.asInstanceOf[Int]
@@ -144,6 +144,20 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
         val swapTreeIndex = r.nextInt(oldModel.numTrees)
         oldModel._trees(swapTreeIndex) = model._trees(treeIndex)
       }
+      oldModel.metadata = Some(new DecisionTreeMetadata(oldModel.metadata.get.numFeatures,
+        oldModel.metadata.get.numExamples + numNewPoints,
+        oldModel.metadata.get.numClasses,
+        oldModel.metadata.get.maxBins,
+        oldModel.metadata.get.featureArity,
+        oldModel.metadata.get.unorderedFeatures,
+        oldModel.metadata.get.numBins,
+        oldModel.metadata.get.impurity,
+        oldModel.metadata.get.quantileStrategy,
+        oldModel.metadata.get.maxDepth,
+        oldModel.metadata.get.minInstancesPerNode,
+        oldModel.metadata.get.minInfoGain,
+        oldModel.metadata.get.numTrees,
+        oldModel.metadata.get.numFeaturesPerNode))
       // TODO remove side effects
       oldModel
     }
@@ -187,7 +201,7 @@ final class RandomForestClassificationModel private[ml] (
                                                           val numFeatures: Int,
                                                           override val numClasses: Int,
                                                           val splits: Option[Array[Array[Split]]],
-                                                          val metadata: Option[DecisionTreeMetadata],
+                                                          var metadata: Option[DecisionTreeMetadata],
                                                           val wahooStrategy: WahooStrategy)
   extends ProbabilisticClassificationModel[Vector, RandomForestClassificationModel]
     with TreeEnsembleModel with Serializable {
