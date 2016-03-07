@@ -42,7 +42,7 @@ object WahooRandomForestIncremental {
 
     println("batched strategy")
     rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5)
+    runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5, sc, sqlContext)
     println("online strategy")
     rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
     runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5, sc, sqlContext)
