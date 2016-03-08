@@ -144,7 +144,7 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
         oldModel._trees(swapTreeIndex) = model._trees(treeIndex)
       }
       // TODO remove side effects
-      oldModel
+      model
     }
   }
 

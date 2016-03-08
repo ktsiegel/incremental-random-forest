@@ -42,7 +42,7 @@ object WahooRandomForestIncremental {
 
     val batchSizeConstant = 1000.0
     val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
-    Range(0, 1000).map { i =>
+    Range(0, 10).map { i =>
       batchWeights += (1.0 / batchSizeConstant)
     }
     batchWeights += 2.0 / batchSizeConstant
@@ -60,22 +60,22 @@ object WahooRandomForestIncremental {
                        incrementParam: Int,
                        sc: SparkContext,
                        sqlContext: SQLContext) {
-    println("batched strategy")
-    rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    runBenchmark(rf, df, evaluator, batches, numBatches,
-      initialDepth, incrementParam, sc, sqlContext)
-    println("online strategy")
-    rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    runBenchmark(rf, df, evaluator, batches, numBatches,
-      initialDepth, incrementParam, sc, sqlContext)
+    // println("batched strategy")
+    // rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
+    // runBenchmark(rf, df, evaluator, batches, numBatches,
+    //   initialDepth, incrementParam, sc, sqlContext)
+    // println("online strategy")
+    // rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
+    // runBenchmark(rf, df, evaluator, batches, numBatches,
+    //   initialDepth, incrementParam, sc, sqlContext)
     println("random replacement strategy")
     rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
     runBenchmark(rf, df, evaluator, batches, numBatches,
       initialDepth, incrementParam, sc, sqlContext)
-    println("control")
-    rf.wahooStrategy = new WahooStrategy(false, DefaultStrategy)
-    runBenchmark(rf, df, evaluator, batches, numBatches,
-      initialDepth, 0, sc, sqlContext)
+    // println("control")
+    // rf.wahooStrategy = new WahooStrategy(false, DefaultStrategy)
+    // runBenchmark(rf, df, evaluator, batches, numBatches,
+    //   initialDepth, 0, sc, sqlContext)
   }
 
   def runBenchmark(rf: RandomForestClassifier, df: DataFrame,
