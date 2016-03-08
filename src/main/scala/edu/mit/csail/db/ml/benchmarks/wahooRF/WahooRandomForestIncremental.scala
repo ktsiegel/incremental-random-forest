@@ -40,36 +40,39 @@ object WahooRandomForestIncremental {
       .setFeaturesCol("features")
       .setNumTrees(10)
 
+    val batchSizeConstant = 1000.0
+    val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
+    Range(0, 1000).map { i =>
+      batchWeights += (1.0/batchSizeConstant)
+    }
+    batchWeights += 2.0/batchSizeConstant
+
+    val batches = df.randomSplit(batchWeights.toArray)
+
+
     println("batched strategy")
     rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    runBenchmark(rf, df, evaluator, 1000.0, 10, 10, 2, sc, sqlContext)
+    runBenchmark(rf, df, evaluator, 1000.0, batches, 10, 2, sc, sqlContext)
     println("online strategy")
     rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    runBenchmark(rf, df, evaluator, 1000.0, 10, 10, 2, sc, sqlContext)
+    runBenchmark(rf, df, evaluator, 1000.0, batches, 10, 2, sc, sqlContext)
     println("random replacement strategy")
     rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
-    runBenchmark(rf, df, evaluator, 1000.0, 10, 10, 2, sc, sqlContext)
+    runBenchmark(rf, df, evaluator, 1000.0, batches, 10, 2, sc, sqlContext)
     println("control")
 		rf.setMaxDepth(10)
-    runControlBenchmark(rf, df, evaluator, 1000.0, 10)
+    runControlBenchmark(rf, df, evaluator, 1000.0, 10, batches)
   }
 
   def runBenchmark(rf: RandomForestClassifier, df: DataFrame,
                    evaluator: MulticlassClassificationEvaluator,
-                   batchSizeConstant: Double,
+                   batches: Array[DataFrame],
 									 numBatches: Int,
 									 initialDepth: Int,
 									 incrementParam: Int,
 									 sc: SparkContext,
 									 sqlContext: SQLContext) {
 		rf.setMaxDepth(initialDepth)
-    val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
-    Range(0, numBatches).map { i =>
-      batchWeights += (1.0/batchSizeConstant)
-    }
-    batchWeights += 2.0/batchSizeConstant
-
-    val batches = df.randomSplit(batchWeights.toArray)
     val timer = new TimeTracker()
     var numPoints = batches(0).count()
     timer.start("training 0")
