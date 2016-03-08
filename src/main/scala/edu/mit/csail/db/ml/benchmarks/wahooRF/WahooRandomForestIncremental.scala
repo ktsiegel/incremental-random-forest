@@ -43,25 +43,39 @@ object WahooRandomForestIncremental {
     val batchSizeConstant = 1000.0
     val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
     Range(0, 1000).map { i =>
-      batchWeights += (1.0/batchSizeConstant)
+      batchWeights += (1.0 / batchSizeConstant)
     }
-    batchWeights += 2.0/batchSizeConstant
+    batchWeights += 2.0 / batchSizeConstant
 
     val batches = df.randomSplit(batchWeights.toArray)
 
+    runAllBenchmarks(rf, df, evaluator, batches, 10, 10, 2, sc, sqlContext)
+  }
 
+  def runAllBenchmarks(rf: RandomForestClassifier, df: DataFrame,
+                       evaluator: MulticlassClassificationEvaluator,
+                       batches: Array[DataFrame],
+                       numBatches: Int,
+                       initialDepth: Int,
+                       incrementParam: Int,
+                       sc: SparkContext,
+                       sqlContext: SQLContext) {
     println("batched strategy")
     rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    runBenchmark(rf, df, evaluator, 1000.0, batches, 10, 2, sc, sqlContext)
+    runBenchmark(rf, df, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext)
     println("online strategy")
     rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    runBenchmark(rf, df, evaluator, 1000.0, batches, 10, 2, sc, sqlContext)
+    runBenchmark(rf, df, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext)
     println("random replacement strategy")
     rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
-    runBenchmark(rf, df, evaluator, 1000.0, batches, 10, 2, sc, sqlContext)
+    runBenchmark(rf, df, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext)
     println("control")
-		rf.setMaxDepth(10)
-    runControlBenchmark(rf, df, evaluator, 1000.0, 10, batches)
+    rf.wahooStrategy = new WahooStrategy(false, DefaultStrategy)
+    runBenchmark(rf, df, evaluator, batches, numBatches,
+      initialDepth, 0, sc, sqlContext)
   }
 
   def runBenchmark(rf: RandomForestClassifier, df: DataFrame,
@@ -84,6 +98,7 @@ object WahooRandomForestIncremental {
     println("time: " + time)
     println("accuracy: " + (1.0 - accuracy))
 		var currDepth = initialDepth + incrementParam
+    var currDF = batches(0)
     Range(1,numBatches).map { batch => {
       if (rf.wahooStrategy.isIncremental) {
 			  rf.setMaxDepth(currDepth)
@@ -98,6 +113,9 @@ object WahooRandomForestIncremental {
           tempModel = rf.update(model, pDF)
         })
         tempModel
+      } else if (rf.wahooStrategy == DefaultStrategy) {
+        currDF = currDF.unionAll(batches(batch))
+        rf.fit(currDF)
       } else {
       	rf.update(model, batches(batch))
       }
@@ -110,40 +128,6 @@ object WahooRandomForestIncremental {
       if (rf.wahooStrategy.isIncremental) {
 			  currDepth += incrementParam
       }
-    }}
-  }
-
-
-  def runControlBenchmark(rf: RandomForestClassifier, df: DataFrame,
-                   evaluator: MulticlassClassificationEvaluator,
-                   batchSizeConstant: Double,
-									 numBatches: Int) {
-    val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
-    Range(0, numBatches).map { i =>
-      batchWeights += (1.0/batchSizeConstant)
-    }
-    batchWeights += 2.0/batchSizeConstant
-    val batches = df.randomSplit(batchWeights.toArray)
-    val timer = new TimeTracker()
-    var currDF = batches(0)
-    var numPoints = currDF.count()
-    timer.start("training 0")
-    val model: RandomForestClassificationModel = rf.fit(currDF)
-    var time = timer.stop("training 0")
-    var predictions = model.transform(batches.last)
-    var accuracy = evaluator.evaluate(predictions)
-    println(time)
-    println(1.0 - accuracy)
-    Range(1,numBatches).map { batch => {
-      numPoints += batches(batch).count()
-      currDF = currDF.unionAll(batches(batch))
-      timer.start("training " + batch)
-      val modelUpdated = rf.fit(currDF)
-      time = timer.stop("training " + batch)
-      predictions = modelUpdated.transform(batches.last)
-      accuracy = evaluator.evaluate(predictions)
-      println(time)
-      println(1.0 - accuracy)
     }}
   }
 }

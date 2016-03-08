@@ -61,8 +61,6 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     // Use classification
     val strategy =
       super.getOldStrategy(categoricalFeatures, numClasses, OldAlgo.Classification, getOldImpurity)
-		println("strategy uses node id cache: " + strategy.useNodeIdCache)
-
     val numFeatures = oldDataset.first().features.size
 
     val (trees, splits, metadata) =

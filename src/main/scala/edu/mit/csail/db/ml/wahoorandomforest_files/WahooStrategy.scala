@@ -7,6 +7,7 @@ sealed trait Strategy
 case object OnlineStrategy extends Strategy
 case object BatchedStrategy extends Strategy
 case object RandomReplacementStrategy extends Strategy
+case object DefaultStrategy extends Strategy
 
 class WahooStrategy(val erf: Boolean, val strategy: Strategy) extends Serializable {
   def isIncremental = (strategy == OnlineStrategy) ||
