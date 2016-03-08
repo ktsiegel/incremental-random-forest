@@ -38,18 +38,23 @@ object WahooRandomForestIncremental {
     val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(10)
+      .setNumTrees(3)
 
-    val batchSizeConstant = 1000.0
+    val batches = generateBatches(1000.0, df)
+    runAllBenchmarks(rf, df, evaluator, batches, 5, 3, 2, sc, sqlContext)
+  }
+
+  def generateBatches(batchSizeConstant: Double,
+    df: DataFrame): Array[DataFrame] = {
     val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
-    Range(0, 10).map { i =>
-      batchWeights += (1.0 / batchSizeConstant)
+    var totalWeight: Double = 0.0
+    Range(0, 5).map { i =>
+      val coeff: Double = (1.0 / batchSizeConstant)
+      batchWeights += coeff
+      totalWeight += coeff
     }
-    batchWeights += 2.0 / batchSizeConstant
-
-    val batches = df.randomSplit(batchWeights.toArray)
-
-    runAllBenchmarks(rf, df, evaluator, batches, 10, 10, 2, sc, sqlContext)
+    batchWeights += (totalWeight / 4.0)
+    df.randomSplit(batchWeights.toArray)
   }
 
   def runAllBenchmarks(rf: RandomForestClassifier, df: DataFrame,
@@ -60,22 +65,22 @@ object WahooRandomForestIncremental {
                        incrementParam: Int,
                        sc: SparkContext,
                        sqlContext: SQLContext) {
-    // println("batched strategy")
-    // rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    // runBenchmark(rf, df, evaluator, batches, numBatches,
-    //   initialDepth, incrementParam, sc, sqlContext)
-    // println("online strategy")
-    // rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    // runBenchmark(rf, df, evaluator, batches, numBatches,
-    //   initialDepth, incrementParam, sc, sqlContext)
+    println("batched strategy")
+    rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
+    runBenchmark(rf, df, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext)
+    println("online strategy")
+    rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
+    runBenchmark(rf, df, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext)
     println("random replacement strategy")
     rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
     runBenchmark(rf, df, evaluator, batches, numBatches,
       initialDepth, incrementParam, sc, sqlContext)
-    // println("control")
-    // rf.wahooStrategy = new WahooStrategy(false, DefaultStrategy)
-    // runBenchmark(rf, df, evaluator, batches, numBatches,
-    //   initialDepth, 0, sc, sqlContext)
+    println("control")
+    rf.wahooStrategy = new WahooStrategy(false, DefaultStrategy)
+    runBenchmark(rf, df, evaluator, batches, numBatches,
+      initialDepth, 0, sc, sqlContext)
   }
 
   def runBenchmark(rf: RandomForestClassifier, df: DataFrame,
@@ -94,9 +99,12 @@ object WahooRandomForestIncremental {
     var time = timer.stop("training 0")
     var predictions = model.transform(batches.last)
     var accuracy = evaluator.evaluate(predictions)
+    // model._trees.foreach(tree => { //   println("tree " + (1.0 - evaluator.evaluate(tree.transform(batches.last))))
+    // })
+
     println("num points: " + numPoints)
     println("time: " + time)
-    println("accuracy: " + (1.0 - accuracy))
+    println("error: " + (1.0 - accuracy))
 		var currDepth = initialDepth + incrementParam
     var currDF = batches(0)
     Range(1,numBatches).map { batch => {
@@ -118,7 +126,12 @@ object WahooRandomForestIncremental {
         rf.fit(currDF)
       } else {
       	rf.update(model, batches(batch))
+
       }
+      // modelUpdated._trees.foreach(tree => {
+      //   println("tree " + (1.0 - evaluator.evaluate(tree.transform(batches.last))))
+      // })
+
       time = timer.stop("training " + batch)
       predictions = modelUpdated.transform(batches.last)
       accuracy = evaluator.evaluate(predictions)
@@ -128,6 +141,7 @@ object WahooRandomForestIncremental {
       if (rf.wahooStrategy.isIncremental) {
 			  currDepth += incrementParam
       }
+      println()
     }}
   }
 }

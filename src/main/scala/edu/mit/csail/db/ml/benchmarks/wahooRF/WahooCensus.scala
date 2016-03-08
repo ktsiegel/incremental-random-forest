@@ -24,7 +24,7 @@ object WahooCensus {
       .setMaster("local[2]")
       .set("spark.driver.allowMultipleContexts", "true")
     val sc = new SparkContext(conf)
-		val sqlContext = new SQLContext(sc)
+    val sqlContext = new SQLContext(sc)
 
     var df: DataFrame = WahooUtils.readData(trainingDataPath, sqlContext)
     df = WahooUtils.processIntColumns(df)
@@ -40,92 +40,10 @@ object WahooCensus {
     val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(1)
+      .setNumTrees(10)
 
-    println("batched strategy")
-    rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    WahooRandomForestIncremental.runBenchmark(rf, df, evaluator, 10.0, 5, 5, 1, sc, sqlContext)
-    // println("online strategy")
-    // rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    // runBenchmark(rf, df, evaluator, 8.0)
-    // println("random replacement strategy")
-    // rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
-    // runBenchmark(rf, df, evaluator, 8.0)
-    // println("control")
-    // runControlBenchmark(rf, df, evaluator, 8.0)
+    val batches = WahooRandomForestIncremental.generateBatches(100.0, df)
+    WahooRandomForestIncremental.runAllBenchmarks(rf, df, evaluator, batches,
+      10, 10, 1, sc, sqlContext)
   }
-
-//   def runBenchmark(rf: RandomForestClassifier, df: DataFrame,
-//                    evaluator: MulticlassClassificationEvaluator,
-//                    batchSizeConstant: Double,
-// 									 numBatches: Int,
-// 									 initialDepth: Int,
-// 									 incrementParam: Int) {
-// 		rf.setMaxDepth(initialDepth)
-//     val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
-//     Range(0, numBatches).map { i =>
-//       batchWeights += (1.0/batchSizeConstant)
-//     }
-//     batchWeights += 2.0/batchSizeConstant
-// 
-//     val batches = df.randomSplit(batchWeights.toArray)
-//     val timer = new TimeTracker()
-//     var numPoints = batches(0).count()
-//     timer.start("training 0")
-//     val model: RandomForestClassificationModel = rf.fit(batches(0))
-//     var time = timer.stop("training 0")
-//     var predictions = model.transform(batches(1))
-//     var accuracy = evaluator.evaluate(predictions)
-//     println("time: " + time)
-//     println("error: " + (1.0 - accuracy))
-// 		var currDepth = initialDepth + incrementParam
-//     Range(1,numBatches).map { batch => {
-// 			rf.setMaxDepth(currDepth)
-//       numPoints += batches(batch).count()
-//       timer.start("training " + batch)
-//       val modelUpdated = rf.update(model, batches(batch))
-//       time = timer.stop("training " + batch)
-//       predictions = modelUpdated.transform(batches.last)
-//       accuracy = evaluator.evaluate(predictions)
-//       println("time: " + time)
-//       println("error: " + (1.0 - accuracy))
-// 			currDepth += incrementParam
-//     }}
-//   }
-// 
-// 
-//   def runControlBenchmark(rf: RandomForestClassifier, df: DataFrame,
-//                    evaluator: MulticlassClassificationEvaluator,
-//                    batchSizeConstant: Double) {
-//     val numBatches = 6
-//     val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
-//     Range(0, numBatches).map { i =>
-//       batchWeights += (1.0/batchSizeConstant)
-//     }
-//     batchWeights += 0.2
-//     val batches = df.randomSplit(batchWeights.toArray)
-//     val timer = new TimeTracker()
-//     var currDF = batches(0)
-//     var numPoints = currDF.count()
-//     println(numPoints)
-//     timer.start("training 0")
-//     val model: RandomForestClassificationModel = rf.fit(currDF)
-//     var time = timer.stop("training 0")
-//     var predictions = model.transform(batches.last)
-//     var accuracy = evaluator.evaluate(predictions)
-//     println(time)
-//     println(1.0 - accuracy)
-//     Range(1,numBatches).map { batch => {
-//       numPoints += batches(batch).count()
-//       println(numPoints)
-//       currDF = currDF.unionAll(batches(batch))
-//       timer.start("training " + batch)
-//       val modelUpdated = rf.fit(currDF)
-//       time = timer.stop("training " + batch)
-//       predictions = modelUpdated.transform(batches.last)
-//       accuracy = evaluator.evaluate(predictions)
-//       println(time)
-//       println(1.0 - accuracy)
-//     }}
-//   }
 }
