@@ -42,16 +42,16 @@ object WahooRandomForestIncremental {
 
     println("batched strategy")
     rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5, sc, sqlContext)
+    runBenchmark(rf, df, evaluator, 1000.0, 10, 10, 2, sc, sqlContext)
     println("online strategy")
     rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5, sc, sqlContext)
+    runBenchmark(rf, df, evaluator, 1000.0, 10, 10, 2, sc, sqlContext)
     println("random replacement strategy")
     rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
-    runBenchmark(rf, df, evaluator, 10.0, 5, 10, 5, sc, sqlContext)
+    runBenchmark(rf, df, evaluator, 1000.0, 10, 10, 2, sc, sqlContext)
     println("control")
 		rf.setMaxDepth(10)
-    runControlBenchmark(rf, df, evaluator, 10.0, 5)
+    runControlBenchmark(rf, df, evaluator, 1000.0, 10)
   }
 
   def runBenchmark(rf: RandomForestClassifier, df: DataFrame,
