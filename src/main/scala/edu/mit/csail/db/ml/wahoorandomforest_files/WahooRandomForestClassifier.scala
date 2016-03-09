@@ -111,40 +111,52 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
 
     if (wahooStrategy.isIncremental) {
       assert(oldModel.splits.isDefined && oldModel.metadata.isDefined,
-      	"Error, the old model was not trained with an incremental strategy.")
+    	"Error, the old model was not trained with an incremental strategy.")
       val trees = WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy,
         getNumTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
         oldModel.metadata.get)
         .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
       new RandomForestClassificationModel(trees, numFeatures, numClasses,
-          oldModel.splits, oldModel.metadata, wahooStrategy)
-
+        oldModel.splits, oldModel.metadata, wahooStrategy)
     } else {
-      // TODO randomly remove trees
-      val numNewPoints = dataset.count()
-      val swappedTrees = oldModel.metadata match {
-        case Some(m) => {
-          println("there is metadata")
-          val numOldPoints = m.numExamples
-          val numOldTrees = oldModel.numTrees
-          val count = numNewPoints / (numOldPoints + numNewPoints) * numOldTrees
-          count.asInstanceOf[Int]
+      wahooStrategy.strategy match {
+        case RandomReplacementStrategy => {
+          // TODO randomly remove trees
+          val numNewPoints = dataset.count()
+          val swappedTrees = 1 // TODO change
+          val oldNumTrees = super.getNumTrees
+          super.setNumTrees(swappedTrees)
+          val model = train(dataset)
+          super.setNumTrees(oldNumTrees)
+          val r = scala.util.Random
+          // TODO change this to be selection without replacement
+          Range(0, swappedTrees).map { treeIndex =>
+            val swapTreeIndex = r.nextInt(oldModel.numTrees)
+            oldModel._trees(swapTreeIndex) = model._trees(treeIndex)
+          }
+          // TODO remove side effects
+          oldModel
         }
-        case None => 1
+        case TreeDecayStrategy => {
+          // TODO
+          null
+        }
+        case TreeReweightStrategy => {
+          // TODO
+          null
+        }
+        case RandomNodeReplacementStrategy => {
+          // TODO
+          null
+        }
+        case DefaultStrategy => {
+          train(dataset)
+        }
+        case _ => {
+          throw new IllegalArgumentException("Unknown wahoo strategy.")
+        }
       }
-      val oldNumTrees = super.getNumTrees
-      super.setNumTrees(swappedTrees)
-      val model = train(dataset)
-      super.setNumTrees(oldNumTrees)
-      val r = scala.util.Random
-      // TODO change this to be selection without replacement
-      Range(0, swappedTrees).map { treeIndex =>
-        val swapTreeIndex = r.nextInt(oldModel.numTrees)
-        oldModel._trees(swapTreeIndex) = model._trees(treeIndex)
-      }
-      // TODO remove side effects
-      oldModel
     }
   }
 

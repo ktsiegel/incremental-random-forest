@@ -42,8 +42,9 @@ object WahooCensus {
       .setFeaturesCol("features")
       .setNumTrees(10)
 
-    val batches = WahooRandomForestIncremental.generateBatches(100.0, df)
-    WahooRandomForestIncremental.runAllBenchmarks(rf, df, evaluator, batches,
-      10, 10, 1, sc, sqlContext)
+    val numBatches = 10
+    val batches = WahooRandomForestIncremental.generateBatches(100.0, numBatches, df)
+    WahooRandomForestIncremental.runAllBenchmarks(rf, evaluator, batches,
+      10, 10, 1, sc, sqlContext, false, false)
   }
 }

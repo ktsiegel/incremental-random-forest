@@ -40,15 +40,16 @@ object WahooRandomForestIncremental {
       .setFeaturesCol("features")
       .setNumTrees(3)
 
-    val batches = generateBatches(1000.0, df)
-    runAllBenchmarks(rf, df, evaluator, batches, 5, 3, 2, sc, sqlContext)
+    val numBatches = 10
+    val batches = generateBatches(1000.0, numBatches, df)
+    runAllBenchmarks(rf, evaluator, batches, numBatches, 3, 2, sc, sqlContext, false, false)
   }
 
-  def generateBatches(batchSizeConstant: Double,
+  def generateBatches(batchSizeConstant: Double, numBatches: Int,
     df: DataFrame): Array[DataFrame] = {
     val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
     var totalWeight: Double = 0.0
-    Range(0, 5).map { i =>
+    Range(0, numBatches).map { i =>
       val coeff: Double = (1.0 / batchSizeConstant)
       batchWeights += coeff
       totalWeight += coeff
@@ -57,54 +58,61 @@ object WahooRandomForestIncremental {
     df.randomSplit(batchWeights.toArray)
   }
 
-  def runAllBenchmarks(rf: RandomForestClassifier, df: DataFrame,
+  def runAllBenchmarks(rf: RandomForestClassifier,
                        evaluator: MulticlassClassificationEvaluator,
                        batches: Array[DataFrame],
                        numBatches: Int,
                        initialDepth: Int,
                        incrementParam: Int,
                        sc: SparkContext,
-                       sqlContext: SQLContext) {
+                       sqlContext: SQLContext,
+                       predictive: Boolean,
+                       erf: Boolean) {
     println("batched strategy")
-    rf.wahooStrategy = new WahooStrategy(false, BatchedStrategy)
-    runBenchmark(rf, df, evaluator, batches, numBatches,
-      initialDepth, incrementParam, sc, sqlContext)
+    rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
+    runBenchmark(rf, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext, predictive)
     println("online strategy")
-    rf.wahooStrategy = new WahooStrategy(false, OnlineStrategy)
-    runBenchmark(rf, df, evaluator, batches, numBatches,
-      initialDepth, incrementParam, sc, sqlContext)
+    rf.wahooStrategy = new WahooStrategy(erf, OnlineStrategy)
+    runBenchmark(rf, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext, predictive)
     println("random replacement strategy")
-    rf.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
-    runBenchmark(rf, df, evaluator, batches, numBatches,
-      initialDepth, incrementParam, sc, sqlContext)
+    rf.wahooStrategy = new WahooStrategy(erf, RandomReplacementStrategy)
+    runBenchmark(rf, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext, predictive)
     println("control")
-    rf.wahooStrategy = new WahooStrategy(false, DefaultStrategy)
-    runBenchmark(rf, df, evaluator, batches, numBatches,
-      initialDepth, 0, sc, sqlContext)
+    rf.wahooStrategy = new WahooStrategy(erf, DefaultStrategy)
+    runBenchmark(rf, evaluator, batches, numBatches,
+      initialDepth, 0, sc, sqlContext, predictive)
   }
 
-  def runBenchmark(rf: RandomForestClassifier, df: DataFrame,
+  def runBenchmark(rf: RandomForestClassifier,
                    evaluator: MulticlassClassificationEvaluator,
                    batches: Array[DataFrame],
 									 numBatches: Int,
 									 initialDepth: Int,
 									 incrementParam: Int,
 									 sc: SparkContext,
-									 sqlContext: SQLContext) {
+									 sqlContext: SQLContext,
+                   predictive: Boolean) {
 		rf.setMaxDepth(initialDepth)
     val timer = new TimeTracker()
     var numPoints = batches(0).count()
     timer.start("training 0")
     val model = rf.fit(batches(0))
     var time = timer.stop("training 0")
-    var predictions = model.transform(batches.last)
+    var predictions = if (predictive) {
+      model.transform(batches(1))
+    } else {
+      model.transform(batches.last)
+    }
     var accuracy = evaluator.evaluate(predictions)
     // model._trees.foreach(tree => { //   println("tree " + (1.0 - evaluator.evaluate(tree.transform(batches.last))))
     // })
 
-    println("num points: " + numPoints)
-    println("time: " + time)
-    println("error: " + (1.0 - accuracy))
+    println(numPoints)
+    println(time)
+    println((1.0 - accuracy))
 		var currDepth = initialDepth + incrementParam
     var currDF = batches(0)
     Range(1,numBatches).map { batch => {
@@ -117,7 +125,7 @@ object WahooRandomForestIncremental {
         var tempModel = model
         batches(batch).foreach(point => {
           val pointDataset = sc.parallelize(Array(point))
-          val pDF = sqlContext.createDataFrame(pointDataset, df.schema)
+          val pDF = sqlContext.createDataFrame(pointDataset, batches(0).schema)
           tempModel = rf.update(model, pDF)
         })
         tempModel
@@ -133,15 +141,18 @@ object WahooRandomForestIncremental {
       // })
 
       time = timer.stop("training " + batch)
-      predictions = modelUpdated.transform(batches.last)
+      predictions = if (predictive) {
+        modelUpdated.transform(batches(batch+1))
+      } else {
+        modelUpdated.transform(batches.last)
+      }
       accuracy = evaluator.evaluate(predictions)
-      println("num points: " + numPoints)
-      println("time: " + time)
-      println("error: " + (1.0 - accuracy))
+      println(numPoints)
+      println(time)
+      println((1.0 - accuracy))
       if (rf.wahooStrategy.isIncremental) {
 			  currDepth += incrementParam
       }
-      println()
     }}
   }
 }

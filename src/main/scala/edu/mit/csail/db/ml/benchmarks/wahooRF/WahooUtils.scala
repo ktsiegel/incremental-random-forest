@@ -52,6 +52,24 @@ object WahooUtils {
     df
   }
 
+  def processStringColumnsAsInt(dataset: DataFrame): DataFrame = {
+    var df = dataset
+    val toDouble = org.apache.spark.sql.functions.udf[Double, String](label => {
+      label.toDouble
+    })
+    df.schema.foreach( entry => {
+      entry.dataType match {
+        case StringType => {
+          if (entry.name != "dteday") {
+            df = df.withColumn(entry.name, toDouble(df(entry.name)))
+          }
+        }
+        case _ => {}
+      }
+    })
+    df
+  }
+
   private def makeIndexers(fields: Seq[StructField]): Array[PipelineStage] = {
     fields.toArray.map( (entry) =>
       new StringIndexer()
@@ -68,9 +86,22 @@ object WahooUtils {
     )
   }
 
+  import org.apache.spark.ml.feature.Binarizer
+  def makeBinarizer(inputField: String, outputField: String, threshold: Int): Binarizer = {
+    new Binarizer()
+      .setInputCol(inputField)
+      .setOutputCol(outputField)
+      .setThreshold(threshold)
+  }
+
   def processStringColumns(dataset: DataFrame, fields: Seq[StructField]): Array[PipelineStage] = {
     makeIndexers(fields) ++ makeEncoders(fields)
   }
+
+   def getNumericFields(dataset: DataFrame, labels: Array[String]): Seq[StructField] = {
+     dataset.schema.filter(entry =>
+       entry.dataType == DoubleType && !labels.contains(entry.name))
+   }
 
   def getNumericFields(dataset: DataFrame, label: String): Seq[StructField] = {
     dataset.schema.filter( entry =>
@@ -97,13 +128,13 @@ object WahooUtils {
 
   def processDataFrame(dataset: DataFrame, stages: Array[PipelineStage]): DataFrame = {
     var df = dataset
-    stages.foreach(stage =>
+    stages.foreach(stage => {
       stage match {
         case estimator: Estimator[_] =>
           df = estimator.fit(df).transform(df)
         case transformer: Transformer =>
           df = transformer.transform(df)
-    })
+      }})
     df
   }
 }
