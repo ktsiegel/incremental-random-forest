@@ -737,7 +737,7 @@ private[ml] object WahooRandomForest extends Logging {
       case (nodeIndex, aggStats) =>
         if (nodes(nodeIndex).isLeaf) {
           // Collect aggregate statistics for leaves
-          (nodeIndex, (None, None, aggStats))
+          (nodeIndex, (None, None, None, aggStats))
         } else {
           // For online random forests, we merge in stats from points from
           // previous batch.
