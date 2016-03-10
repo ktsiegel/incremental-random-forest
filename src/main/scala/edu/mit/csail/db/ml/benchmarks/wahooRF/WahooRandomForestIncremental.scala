@@ -111,11 +111,16 @@ object WahooRandomForestIncremental {
 		var currDepth = initialDepth + incrementParam
     var currDF = batches(0)
     Range(1,numBatches).map { batch => {
+      timer.start("training " + batch)
       if (rf.wahooStrategy == RandomReplacementStrategy) {
-        model._trees.zipWithIndex.foreach{ case (tree, index) => {
+        val weightAdjustments = model._trees.map(tree => {
           val prediction = tree.transform(batches(batch))
-          val eval = evaluator.evaluate(prediction)
-          model.weights(index) *= eval
+          evaluator.evaluate(prediction)
+        })
+        val maxAdjustment = weightAdjustments.max
+        val normalizedAdjustments = weightAdjustments.map(_/maxAdjustment)
+        model._trees.zipWithIndex.foreach{ case (tree, index) => {
+          model.weights(index) *= normalizedAdjustments(index)
         }}
       }
 
@@ -125,7 +130,6 @@ object WahooRandomForestIncremental {
 			  rf.setMaxDepth(currDepth)
       }
       numPoints += batches(batch).count()
-      timer.start("training " + batch)
 			model = if (rf.wahooStrategy == DefaultStrategy) {
         currDF = currDF.unionAll(batches(batch))
         rf.fit(currDF)
