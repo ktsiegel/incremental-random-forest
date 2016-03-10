@@ -800,12 +800,10 @@ private[ml] object WahooRandomForest extends Logging {
         logDebug("Node = " + node)
 
         if (isLeaf && wahooStrategy.isIncremental) {
-          println(node + " is leaf")
           node.aggStats = Some(aggStats)
           node.features = featuresForNode
         }
         else if (!isLeaf) {
-          println(node + " is not leaf")
           node.split = Some(split)
           val childIsLeaf = (LearningNode.indexToLevel(nodeIndex) + 1) >= metadata.maxDepth
           val leftChildIsLeaf = childIsLeaf || (stats.leftImpurity == 0.0)
@@ -830,13 +828,9 @@ private[ml] object WahooRandomForest extends Logging {
           node.rightChild.get.isLeaf = rightChildIsLeaf
           if (!leftChildIsLeaf || wahooStrategy.isIncremental) {
             nodeQueue.enqueue((treeIndex, node.leftChild.get))
-          } else {
-            println(node.leftChild.get + " is leaf")
           }
           if (!rightChildIsLeaf || wahooStrategy.isIncremental) {
             nodeQueue.enqueue((treeIndex, node.rightChild.get))
-          } else {
-            println(node.rightChild.get + " is leaf")
           }
 
           logDebug("leftChildIndex = " + node.leftChild.get.id +
