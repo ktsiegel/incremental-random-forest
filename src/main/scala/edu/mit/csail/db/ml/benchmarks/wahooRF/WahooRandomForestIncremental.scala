@@ -67,18 +67,18 @@ object WahooRandomForestIncremental {
                        sqlContext: SQLContext,
                        predictive: Boolean,
                        erf: Boolean) {
-    println("batched strategy")
-    rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
-    runBenchmark(rf, evaluator, batches, numBatches,
-      initialDepth, incrementParam, sc, sqlContext, predictive)
+    // println("batched strategy")
+    // rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
+    // runBenchmark(rf, evaluator, batches, numBatches,
+    //   initialDepth, incrementParam, sc, sqlContext, predictive)
     println("random replacement strategy")
     rf.wahooStrategy = new WahooStrategy(erf, RandomReplacementStrategy)
     runBenchmark(rf, evaluator, batches, numBatches,
       initialDepth, incrementParam, sc, sqlContext, predictive)
-    println("control")
-    rf.wahooStrategy = new WahooStrategy(erf, DefaultStrategy)
-    runBenchmark(rf, evaluator, batches, numBatches,
-      initialDepth, 0, sc, sqlContext, predictive)
+    // println("control")
+    // rf.wahooStrategy = new WahooStrategy(erf, DefaultStrategy)
+    // runBenchmark(rf, evaluator, batches, numBatches,
+    //   initialDepth, 0, sc, sqlContext, predictive)
   }
 
   def runBenchmark(rf: RandomForestClassifier,
@@ -94,7 +94,7 @@ object WahooRandomForestIncremental {
     val timer = new TimeTracker()
     var numPoints = batches(0).count()
     timer.start("training 0")
-    val model = rf.fit(batches(0))
+    var model = rf.fit(batches(0))
     var time = timer.stop("training 0")
     var predictions = if (predictive) {
       model.transform(batches(1))
@@ -111,17 +111,26 @@ object WahooRandomForestIncremental {
 		var currDepth = initialDepth + incrementParam
     var currDF = batches(0)
     Range(1,numBatches).map { batch => {
+      if (rf.wahooStrategy == RandomReplacementStrategy) {
+        model._trees.zipWithIndex.foreach{ case (tree, index) => {
+          val prediction = tree.transform(batches(batch))
+          val eval = evaluator.evaluate(prediction)
+          model.weights(index) *= eval
+        }}
+      }
+
+
+
       if (rf.wahooStrategy.isIncremental) {
 			  rf.setMaxDepth(currDepth)
       }
       numPoints += batches(batch).count()
       timer.start("training " + batch)
-			val modelUpdated = if (rf.wahooStrategy == DefaultStrategy) {
+			model = if (rf.wahooStrategy == DefaultStrategy) {
         currDF = currDF.unionAll(batches(batch))
         rf.fit(currDF)
       } else {
       	rf.update(model, batches(batch))
-
       }
       // modelUpdated._trees.foreach(tree => {
       //   println("tree " + (1.0 - evaluator.evaluate(tree.transform(batches.last))))
@@ -129,9 +138,9 @@ object WahooRandomForestIncremental {
 
       time = timer.stop("training " + batch)
       predictions = if (predictive) {
-        modelUpdated.transform(batches(batch+1))
+        model.transform(batches(batch+1))
       } else {
-        modelUpdated.transform(batches.last)
+        model.transform(batches.last)
       }
       accuracy = evaluator.evaluate(predictions)
       println(numPoints)

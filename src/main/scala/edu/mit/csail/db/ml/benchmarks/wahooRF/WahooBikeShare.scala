@@ -40,9 +40,9 @@ object WahooBikeShare {
     val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(10)
+      .setNumTrees(1)
 
     WahooRandomForestIncremental.runAllBenchmarks(rf, evaluator, batches,
-      numBatches, 5, 1, sc, sqlContext, true, false)
+      numBatches, 3, 1, sc, sqlContext, true, false)
   }
 }
