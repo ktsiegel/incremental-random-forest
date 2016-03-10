@@ -38,19 +38,18 @@ object WahooRandomForestIncremental {
     val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(3)
+      .setNumTrees(10)
 
     val numBatches = 10
-    val batches = generateBatches(1000.0, numBatches, df)
-    runAllBenchmarks(rf, evaluator, batches, numBatches, 3, 2, sc, sqlContext, false, false)
+    val batches = generateBatches(numBatches, df)
+    runAllBenchmarks(rf, evaluator, batches, numBatches, 3, 2, sc, sqlContext, true, false)
   }
 
-  def generateBatches(batchSizeConstant: Double, numBatches: Int,
-    df: DataFrame): Array[DataFrame] = {
+  def generateBatches(numBatches: Int, df: DataFrame): Array[DataFrame] = {
     val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
     var totalWeight: Double = 0.0
     Range(0, numBatches).map { i =>
-      val coeff: Double = (1.0 / batchSizeConstant)
+      val coeff: Double = 1.0
       batchWeights += coeff
       totalWeight += coeff
     }
@@ -70,10 +69,6 @@ object WahooRandomForestIncremental {
                        erf: Boolean) {
     println("batched strategy")
     rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
-    runBenchmark(rf, evaluator, batches, numBatches,
-      initialDepth, incrementParam, sc, sqlContext, predictive)
-    println("online strategy")
-    rf.wahooStrategy = new WahooStrategy(erf, OnlineStrategy)
     runBenchmark(rf, evaluator, batches, numBatches,
       initialDepth, incrementParam, sc, sqlContext, predictive)
     println("random replacement strategy")
@@ -121,15 +116,7 @@ object WahooRandomForestIncremental {
       }
       numPoints += batches(batch).count()
       timer.start("training " + batch)
-			val modelUpdated = if (rf.wahooStrategy == OnlineStrategy) {
-        var tempModel = model
-        batches(batch).foreach(point => {
-          val pointDataset = sc.parallelize(Array(point))
-          val pDF = sqlContext.createDataFrame(pointDataset, batches(0).schema)
-          tempModel = rf.update(model, pDF)
-        })
-        tempModel
-      } else if (rf.wahooStrategy == DefaultStrategy) {
+			val modelUpdated = if (rf.wahooStrategy == DefaultStrategy) {
         currDF = currDF.unionAll(batches(batch))
         rf.fit(currDF)
       } else {

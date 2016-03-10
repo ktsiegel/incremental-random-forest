@@ -15,6 +15,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.DataFrame
 import org.apache.spark.sql.functions._
 
+import scala.collection.mutable.ArrayBuffer
+
 /**
  * A smarter Random Forest Classifier which can add more trees to a model
  * that has already been trained. This classifier wraps the existing Random Forest
@@ -122,33 +124,20 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     } else {
       wahooStrategy.strategy match {
         case RandomReplacementStrategy => {
-          // TODO randomly remove trees
-          val numNewPoints = dataset.count()
-          val swappedTrees = 1 // TODO change
-          val oldNumTrees = super.getNumTrees
-          super.setNumTrees(swappedTrees)
-          val model = train(dataset)
-          super.setNumTrees(oldNumTrees)
+          val numNewTrees = 1
+          val tempRF = new WahooRandomForestClassifier()
+          tempRF.setNumTrees(numNewTrees)
+          val model = tempRF.fit(dataset)
           val r = scala.util.Random
-          // TODO change this to be selection without replacement
-          Range(0, swappedTrees).map { treeIndex =>
-            val swapTreeIndex = r.nextInt(oldModel.numTrees)
-            oldModel._trees(swapTreeIndex) = model._trees(treeIndex)
+          val newTrees: ArrayBuffer[DecisionTreeClassificationModel] = new ArrayBuffer()
+          Range(numNewTrees, oldModel.trees.length).map { treeIndex => {
+            newTrees += oldModel._trees(treeIndex)
+          }}
+          Range(0, numNewTrees).map { treeIndex =>
+            newTrees += model._trees(treeIndex)
           }
-          // TODO remove side effects
-          oldModel
-        }
-        case TreeDecayStrategy => {
-          // TODO
-          null
-        }
-        case TreeReweightStrategy => {
-          // TODO
-          null
-        }
-        case RandomNodeReplacementStrategy => {
-          // TODO
-          null
+          new RandomForestClassificationModel(newTrees.toArray, numFeatures, numClasses,
+            oldModel.splits, oldModel.metadata, wahooStrategy)
         }
         case DefaultStrategy => {
           train(dataset)
@@ -174,7 +163,7 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
       "New model must use the same strategy as old model.")
     super.setNumTrees(addedTrees)
     // TODO pass in splits and metadata as optimization
-    val model = train(dataset)
+    val model = fit(dataset)
     val trees: Array[DecisionTreeClassificationModel] = (oldModel.trees ++ model.trees).map(_.asInstanceOf[DecisionTreeClassificationModel])
     new RandomForestClassificationModel(oldModel.uid, trees, oldModel.numFeatures,
       oldModel.numClasses, oldModel.splits, oldModel.metadata, oldModel.wahooStrategy)
