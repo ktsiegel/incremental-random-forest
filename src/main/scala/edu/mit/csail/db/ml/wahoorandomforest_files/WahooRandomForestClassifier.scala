@@ -124,20 +124,26 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     } else {
       wahooStrategy.strategy match {
         case RandomReplacementStrategy => {
+          oldModel.reweightByBatchShift
           val numNewTrees = 1
           val tempRF = new WahooRandomForestClassifier()
           tempRF.setNumTrees(numNewTrees)
           val model = tempRF.fit(dataset)
           val r = scala.util.Random
           val newTrees: ArrayBuffer[DecisionTreeClassificationModel] = new ArrayBuffer()
+          val newWeights: ArrayBuffer[Double] = new ArrayBuffer()
           Range(numNewTrees, oldModel.trees.length).map { treeIndex => {
             newTrees += oldModel._trees(treeIndex)
+            newWeights += oldModel.weights(treeIndex)
           }}
           Range(0, numNewTrees).map { treeIndex =>
             newTrees += model._trees(treeIndex)
+            newWeights += model.weights(treeIndex)
           }
-          new RandomForestClassificationModel(newTrees.toArray, numFeatures, numClasses,
+          val newModel = new RandomForestClassificationModel(newTrees.toArray, numFeatures, numClasses,
             oldModel.splits, oldModel.metadata, wahooStrategy)
+          newModel.weights = newWeights.toArray
+          newModel
         }
         case DefaultStrategy => {
           train(dataset)
@@ -209,6 +215,12 @@ final class RandomForestClassificationModel private[ml] (
     this(Identifiable.randomUID("rfc"), trees, numFeatures, numClasses, splits, metadata,
       wahooStrategy)
 
+  var weights: Array[Double] = Range(0, trees.length).map{ index => 1.0 }.toArray
+
+  def reweightByBatchShift = {
+    weights = weights.map(_ - (1.0/trees.length))
+  }
+
   override def trees: Array[DecisionTreeModel] = _trees.asInstanceOf[Array[DecisionTreeModel]]
 
   // Note: We may add support for weights (based on tree performance) later on.
@@ -229,17 +241,17 @@ final class RandomForestClassificationModel private[ml] (
     // Classifies using majority votes.
     // Ignore the tree weights since all are 1.0 for now.
     val votes = Array.fill[Double](numClasses)(0.0)
-    _trees.view.foreach { tree =>
+    _trees.view.zipWithIndex.foreach { case (tree, index) => {
       val classCounts: Array[Double] = tree.rootNode.predictImpl(features).impurityStats.stats
       val total = classCounts.sum
       if (total != 0) {
         var i = 0
         while (i < numClasses) {
-          votes(i) += classCounts(i) / total
+          votes(i) += classCounts(i) / total * weights(index)
           i += 1
         }
       }
-    }
+    }}
     Vectors.dense(votes)
   }
 
