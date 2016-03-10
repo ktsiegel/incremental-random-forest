@@ -781,7 +781,6 @@ private[ml] object WahooRandomForest extends Logging {
         val nodeIndex = node.id
         val nodeInfo = treeToNodeToIndexInfo(treeIndex)(nodeIndex)
         val aggNodeIndex = nodeInfo.nodeIndexInGroup
-        println(nodeToBestSplits(aggNodeIndex))
         val (split: Option[Split], stats: Option[ImpurityStats], aggStats: DTStatsAggregator,
           featuresForNode: Option[Array[Int]]) =
           nodeToBestSplits(aggNodeIndex)
@@ -797,7 +796,7 @@ private[ml] object WahooRandomForest extends Logging {
         val isLeaf = node.isLeaf ||
           (stats.get.gain <= 0) || (LearningNode.indexToLevel(nodeIndex) >= metadata.maxDepth)
         node.isLeaf = isLeaf
-				node.stats = stats.getOrElse(null)
+        node.stats = stats.getOrElse(null)
         logDebug("Node = " + node)
 
         if (isLeaf && wahooStrategy.isIncremental) {
@@ -825,8 +824,10 @@ private[ml] object WahooRandomForest extends Logging {
           // If the child is a leaf, then we still add it back to the queue. On the
           // next iteration, we just collect aggregate stats for this leaf child
           // without calculating any splits.
-          node.leftChild.get.isLeaf = leftChildIsLeaf
-          node.rightChild.get.isLeaf = rightChildIsLeaf
+          if (!wahooStrategy.isIncremental) {
+            node.leftChild.get.isLeaf = leftChildIsLeaf
+            node.rightChild.get.isLeaf = rightChildIsLeaf
+          }
           if (!leftChildIsLeaf || wahooStrategy.isIncremental) {
             nodeQueue.enqueue((treeIndex, node.leftChild.get))
           }

@@ -273,7 +273,7 @@ private[wahoo] class LearningNode(
       makeInternalNode
     }
     isDone = true
-    if (stats != null && stats.valid) {
+    if (stats.valid) {
       prediction = stats.impurityCalculator.predict
       impurity = stats.impurity
       impurityStats = stats.impurityCalculator
