@@ -734,10 +734,10 @@ private[ml] object WahooRandomForest extends Logging {
     }
 
     val nodeToBestSplits = partitionAggregates.reduceByKey((a, b) => a.merge(b)).map {
-      case (nodeIndex, aggStats) =>
+      case (nodeIndex, aggStats) => {
         if (nodes(nodeIndex).isLeaf) {
           // Collect aggregate statistics for leaves
-          (nodeIndex, (None, None, None, aggStats))
+          (nodeIndex, (None, None, aggStats, None))
         } else {
           // For online random forests, we merge in stats from points from
           // previous batch.
@@ -747,7 +747,7 @@ private[ml] object WahooRandomForest extends Logging {
                 aggStats.merge(stats)
               }
               case None => {
-							}
+              }
             }
           }
 
@@ -762,10 +762,10 @@ private[ml] object WahooRandomForest extends Logging {
           } else {
             binsToBestSplit(aggStats, splits, featuresForNode, nodes(nodeIndex))
           }
-					
-          (nodeIndex, (split, stats, aggStats, featuresForNode))
+
+          (nodeIndex, (Some(split), Some(stats), aggStats, featuresForNode))
         }
-    }.collectAsMap()
+    }}.collectAsMap()
 
     timer.stop("chooseSplits")
 
@@ -781,7 +781,8 @@ private[ml] object WahooRandomForest extends Logging {
         val nodeIndex = node.id
         val nodeInfo = treeToNodeToIndexInfo(treeIndex)(nodeIndex)
         val aggNodeIndex = nodeInfo.nodeIndexInGroup
-        val (split: Split, stats: ImpurityStats, aggStats: DTStatsAggregator,
+        println(nodeToBestSplits(aggNodeIndex))
+        val (split: Option[Split], stats: Option[ImpurityStats], aggStats: DTStatsAggregator,
           featuresForNode: Option[Array[Int]]) =
           nodeToBestSplits(aggNodeIndex)
         logDebug("best split = " + split)
@@ -794,9 +795,9 @@ private[ml] object WahooRandomForest extends Logging {
 
         // Extract info for this node.  Create children if not leaf.
         val isLeaf = node.isLeaf ||
-          (stats.gain <= 0) || (LearningNode.indexToLevel(nodeIndex) >= metadata.maxDepth)
+          (stats.get.gain <= 0) || (LearningNode.indexToLevel(nodeIndex) >= metadata.maxDepth)
         node.isLeaf = isLeaf
-				node.stats = stats
+				node.stats = stats.getOrElse(null)
         logDebug("Node = " + node)
 
         if (isLeaf && wahooStrategy.isIncremental) {
@@ -804,18 +805,18 @@ private[ml] object WahooRandomForest extends Logging {
           node.features = featuresForNode
         }
         else if (!isLeaf) {
-          node.split = Some(split)
+          node.split = split
           val childIsLeaf = (LearningNode.indexToLevel(nodeIndex) + 1) >= metadata.maxDepth
-          val leftChildIsLeaf = childIsLeaf || (stats.leftImpurity == 0.0)
-          val rightChildIsLeaf = childIsLeaf || (stats.rightImpurity == 0.0)
+          val leftChildIsLeaf = childIsLeaf || (stats.get.leftImpurity == 0.0)
+          val rightChildIsLeaf = childIsLeaf || (stats.get.rightImpurity == 0.0)
           node.leftChild = Some(LearningNode(LearningNode.leftChildIndex(nodeIndex),
-            leftChildIsLeaf, ImpurityStats.getEmptyImpurityStats(stats.leftImpurityCalculator)))
+            leftChildIsLeaf, ImpurityStats.getEmptyImpurityStats(stats.get.leftImpurityCalculator)))
           node.rightChild = Some(LearningNode(LearningNode.rightChildIndex(nodeIndex),
-            rightChildIsLeaf, ImpurityStats.getEmptyImpurityStats(stats.rightImpurityCalculator)))
+            rightChildIsLeaf, ImpurityStats.getEmptyImpurityStats(stats.get.rightImpurityCalculator)))
 
           if (nodeIdCache.nonEmpty) {
             val nodeIndexUpdater = NodeIndexUpdater(
-              split = split,
+              split = split.get,
               nodeIndex = nodeIndex)
             nodeIdUpdaters(treeIndex).put(nodeIndex, nodeIndexUpdater)
           }
@@ -834,9 +835,9 @@ private[ml] object WahooRandomForest extends Logging {
           }
 
           logDebug("leftChildIndex = " + node.leftChild.get.id +
-            ", impurity = " + stats.leftImpurity)
+            ", impurity = " + stats.get.leftImpurity)
           logDebug("rightChildIndex = " + node.rightChild.get.id +
-            ", impurity = " + stats.rightImpurity)
+            ", impurity = " + stats.get.rightImpurity)
         }
       }
     }
