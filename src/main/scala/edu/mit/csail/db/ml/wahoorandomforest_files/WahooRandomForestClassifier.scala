@@ -128,6 +128,7 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
           val numNewTrees = 1
           val tempRF = new WahooRandomForestClassifier()
           tempRF.setNumTrees(numNewTrees)
+          tempRF.setMaxDepth(this.getMaxDepth)
           val model = tempRF.fit(dataset)
           val r = scala.util.Random
           val newTrees: ArrayBuffer[DecisionTreeClassificationModel] = new ArrayBuffer()
