@@ -67,10 +67,10 @@ object WahooRandomForestIncremental {
                        sqlContext: SQLContext,
                        predictive: Boolean,
                        erf: Boolean) {
-//    println("batched strategy")
-//    rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
-//    runBenchmark(rf, evaluator, batches, numBatches,
-//      initialDepth, incrementParam, sc, sqlContext, predictive)
+   println("batched strategy")
+   rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
+   runBenchmark(rf, evaluator, batches, numBatches,
+     initialDepth, incrementParam, sc, sqlContext, predictive)
     println("random replacement strategy")
     rf.wahooStrategy = new WahooStrategy(erf, RandomReplacementStrategy)
     runBenchmark(rf, evaluator, batches, numBatches,
