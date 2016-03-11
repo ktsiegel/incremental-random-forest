@@ -77,7 +77,7 @@ object WahooRandomForestIncremental {
       initialDepth, incrementParam, sc, sqlContext, predictive)
     println("control")
     rf.wahooStrategy = new WahooStrategy(erf, DefaultStrategy)
-    runBenchmark(rf, evaluator, batches, numBatches,
+    runControlBenchmark(evaluator, batches, numBatches,
       initialDepth, 0, sc, sqlContext, predictive)
   }
 
@@ -102,9 +102,6 @@ object WahooRandomForestIncremental {
       model.transform(batches.last)
     }
     var accuracy = evaluator.evaluate(predictions)
-    // model._trees.foreach(tree => { //   println("tree " + (1.0 - evaluator.evaluate(tree.transform(batches.last))))
-    // })
-
     println(numPoints)
     println(time)
     println((1.0 - accuracy))
@@ -123,24 +120,13 @@ object WahooRandomForestIncremental {
         }}
       }
 
-
-
       if (rf.wahooStrategy.isIncremental) {
 			  rf.setMaxDepth(currDepth)
       }
       numPoints += batches(batch).count()
 
       timer.start("training " + batch)
-			model = if (rf.wahooStrategy == DefaultStrategy) {
-        currDF = currDF.unionAll(batches(batch))
-        rf.fit(currDF)
-      } else {
-      	rf.update(model, batches(batch))
-      }
-      // modelUpdated._trees.foreach(tree => {
-      //   println("tree " + (1.0 - evaluator.evaluate(tree.transform(batches.last))))
-      // })
-
+      model = rf.update(model, batches(batch))
       time = timer.stop("training " + batch)
       predictions = if (predictive) {
         model.transform(batches(batch+1))
@@ -155,5 +141,57 @@ object WahooRandomForestIncremental {
 			  currDepth += incrementParam
       }
     }}
+  }
+
+  def runControlBenchmark(evaluator: MulticlassClassificationEvaluator,
+                   batches: Array[DataFrame],
+									 numBatches: Int,
+									 initialDepth: Int,
+									 incrementParam: Int,
+									 sc: SparkContext,
+									 sqlContext: SQLContext,
+                   predictive: Boolean) {
+    val rf: org.apache.spark.ml.classification.RandomForestClassifier =
+      new org.apache.spark.ml.classification.RandomForestClassifier()
+      .setLabelCol("label")
+      .setFeaturesCol("features")
+      .setNumTrees(10)
+
+		rf.setMaxDepth(initialDepth)
+    val timer = new TimeTracker()
+    var numPoints = batches(0).count()
+    timer.start("training 0")
+    var model = rf.fit(batches(0))
+    var time = timer.stop("training 0")
+    var predictions = if (predictive) {
+      model.transform(batches(1))
+    } else {
+      model.transform(batches.last)
+    }
+    var accuracy = evaluator.evaluate(predictions)
+
+    println(numPoints)
+    println(time)
+    println((1.0 - accuracy))
+		var currDepth = initialDepth + incrementParam
+    var currDF = batches(0)
+    Range(1,numBatches).map { batch =>
+      numPoints += batches(batch).count()
+
+      timer.start("training " + batch)
+      currDF = currDF.unionAll(batches(batch))
+      model = rf.fit(currDF)
+
+      time = timer.stop("training " + batch)
+      predictions = if (predictive) {
+        model.transform(batches(batch+1))
+      } else {
+        model.transform(batches.last)
+      }
+      accuracy = evaluator.evaluate(predictions)
+      println(numPoints)
+      println(time)
+      println((1.0 - accuracy))
+    }
   }
 }
