@@ -42,7 +42,7 @@ object WahooRandomForestIncremental {
 
     val numBatches = 10
     val batches = generateBatches(numBatches, df)
-    runAllBenchmarks(rf, evaluator, batches, numBatches, 3, 2, sc, sqlContext, true, false)
+    runAllBenchmarks(rf, evaluator, batches, numBatches, 10, 1, sc, sqlContext, true, false)
   }
 
   def generateBatches(numBatches: Int, df: DataFrame): Array[DataFrame] = {
@@ -67,14 +67,14 @@ object WahooRandomForestIncremental {
                        sqlContext: SQLContext,
                        predictive: Boolean,
                        erf: Boolean) {
-//   println("batched strategy")
-//   rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
-//   runBenchmark(rf, evaluator, batches, numBatches,
-//     initialDepth, incrementParam, sc, sqlContext, predictive)
-//    println("random replacement strategy")
-//    rf.wahooStrategy = new WahooStrategy(erf, RandomReplacementStrategy)
-//    runBenchmark(rf, evaluator, batches, numBatches,
-//      initialDepth, incrementParam, sc, sqlContext, predictive)
+   println("batched strategy")
+   rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
+   runBenchmark(rf, evaluator, batches, numBatches,
+     initialDepth, incrementParam, sc, sqlContext, predictive)
+    println("random replacement strategy")
+    rf.wahooStrategy = new WahooStrategy(erf, RandomReplacementStrategy)
+    runBenchmark(rf, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext, predictive)
     println("control")
     rf.wahooStrategy = new WahooStrategy(erf, DefaultStrategy)
     runControlBenchmark(evaluator, batches, numBatches,
