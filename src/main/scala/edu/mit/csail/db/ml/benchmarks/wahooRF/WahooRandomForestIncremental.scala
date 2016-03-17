@@ -45,6 +45,31 @@ object WahooRandomForestIncremental {
     runAllBenchmarks(rf, evaluator, batches, numBatches, 3, 2, sc, sqlContext, true, false)
   }
 
+  def run(trainingDataPath: String, destinationField: String): Unit = {
+    val conf = new SparkConf()
+      .setAppName("Wahoo")
+      .setMaster("local[2]")
+      .set("spark.driver.allowMultipleContexts", "true")
+    val sc = new SparkContext(conf)
+    val sqlContext = new SQLContext(sc)
+    var df: DataFrame = WahooUtils.readData(trainingDataPath, sqlContext)
+    df = WahooUtils.processIntColumns(df)
+    val indexer = WahooUtils.createStringIndexer(destinationField, "label")
+    val evaluator = WahooUtils.createEvaluator(destinationField, "prediction")
+    val numericFields = WahooUtils.getNumericFields(df, destinationField)
+    val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
+    df = WahooUtils.processDataFrame(df, Array(indexer, assembler))
+
+    val rf: RandomForestClassifier = new WahooRandomForestClassifier()
+      .setLabelCol("label")
+      .setFeaturesCol("features")
+      .setNumTrees(10)
+
+    val numBatches = 10
+    val batches = generateBatches(numBatches, df)
+    runAllBenchmarks(rf, evaluator, batches, numBatches, 3, 2, sc, sqlContext, true, false)
+  }
+
   def generateBatches(numBatches: Int, df: DataFrame): Array[DataFrame] = {
     val batchWeights: ArrayBuffer[Double] = new ArrayBuffer[Double]()
     var totalWeight: Double = 0.0
@@ -67,14 +92,14 @@ object WahooRandomForestIncremental {
                        sqlContext: SQLContext,
                        predictive: Boolean,
                        erf: Boolean) {
-//   println("batched strategy")
-//   rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
-//   runBenchmark(rf, evaluator, batches, numBatches,
-//     initialDepth, incrementParam, sc, sqlContext, predictive)
-//    println("random replacement strategy")
-//    rf.wahooStrategy = new WahooStrategy(erf, RandomReplacementStrategy)
-//    runBenchmark(rf, evaluator, batches, numBatches,
-//      initialDepth, incrementParam, sc, sqlContext, predictive)
+   println("batched strategy")
+   rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
+   runBenchmark(rf, evaluator, batches, numBatches,
+     initialDepth, incrementParam, sc, sqlContext, predictive)
+    println("random replacement strategy")
+    rf.wahooStrategy = new WahooStrategy(erf, RandomReplacementStrategy)
+    runBenchmark(rf, evaluator, batches, numBatches,
+      initialDepth, incrementParam, sc, sqlContext, predictive)
     println("control")
     rf.wahooStrategy = new WahooStrategy(erf, DefaultStrategy)
     runControlBenchmark(evaluator, batches, numBatches,
