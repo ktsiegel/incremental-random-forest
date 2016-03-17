@@ -42,7 +42,7 @@ object WahooRandomForestIncremental {
 
     val numBatches = 10
     val batches = generateBatches(numBatches, df)
-    runAllBenchmarks(rf, evaluator, batches, numBatches, 10, 1, sc, sqlContext, true, false)
+    runAllBenchmarks(rf, evaluator, batches, numBatches, 100, 1, sc, sqlContext, true, false)
   }
 
   def run(trainingDataPath: String, destinationField: String): Unit = {
@@ -92,29 +92,7 @@ object WahooRandomForestIncremental {
                        sqlContext: SQLContext,
                        predictive: Boolean,
                        erf: Boolean) {
-   println("batched strategy")
-   rf.wahooStrategy = new WahooStrategy(erf, BatchedStrategy)
-   runBenchmark(rf, evaluator, batches, numBatches,
-     initialDepth, incrementParam, sc, sqlContext, predictive)
-    println("random replacement strategy")
-    rf.wahooStrategy = new WahooStrategy(erf, RandomReplacementStrategy)
-    runBenchmark(rf, evaluator, batches, numBatches,
-      initialDepth, incrementParam, sc, sqlContext, predictive)
-    println("control")
-    rf.wahooStrategy = new WahooStrategy(erf, DefaultStrategy)
-    runControlBenchmark(evaluator, batches, numBatches,
-      initialDepth, 0, sc, sqlContext, predictive)
-  }
-
-  def runBenchmark(rf: RandomForestClassifier,
-                   evaluator: MulticlassClassificationEvaluator,
-                   batches: Array[DataFrame],
-									 numBatches: Int,
-									 initialDepth: Int,
-									 incrementParam: Int,
-									 sc: SparkContext,
-									 sqlContext: SQLContext,
-                   predictive: Boolean) {
+    rf.wahooStrategy = new WahooStrategy(false, CombinedStrategy)
 		rf.setMaxDepth(initialDepth)
     val timer = new TimeTracker()
     var numPoints = batches(0).count()
@@ -132,6 +110,7 @@ object WahooRandomForestIncremental {
     println((1.0 - accuracy))
 		var currDepth = initialDepth + incrementParam
     var currDF = batches(0)
+
     Range(1,numBatches).map { batch => {
       if (rf.wahooStrategy == RandomReplacementStrategy) {
         val weightAdjustments = model._trees.map(tree => {
@@ -145,7 +124,7 @@ object WahooRandomForestIncremental {
         }}
       }
 
-      if (rf.wahooStrategy.isIncremental) {
+      if (rf.wahooStrategy == BatchedStrategy) {
 			  rf.setMaxDepth(currDepth)
       }
       numPoints += batches(batch).count()
@@ -162,7 +141,7 @@ object WahooRandomForestIncremental {
       println(numPoints)
       println(time)
       println((1.0 - accuracy))
-      if (rf.wahooStrategy.isIncremental) {
+      if (rf.wahooStrategy == BatchedStrategy) {
 			  currDepth += incrementParam
       }
     }}

@@ -111,49 +111,37 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
       "Error, the number of features in a new batch " +
         "of data must match the number of features in the previously-seen data.")
 
-    if (wahooStrategy.isIncremental) {
-      assert(oldModel.splits.isDefined && oldModel.metadata.isDefined,
+    assert(oldModel.splits.isDefined && oldModel.metadata.isDefined,
     	"Error, the old model was not trained with an incremental strategy.")
-      val trees = WahooRandomForest.runAndUpdateClassifier(oldModel._trees, oldDataset, strategy,
-        getNumTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
-        oldModel.metadata.get)
-        .map(_.asInstanceOf[DecisionTreeClassificationModel])
-
-      new RandomForestClassificationModel(trees, numFeatures, numClasses,
-        oldModel.splits, oldModel.metadata, wahooStrategy)
-    } else {
-      wahooStrategy.strategy match {
-        case RandomReplacementStrategy => {
-          oldModel.reweightByBatchShift
-          val numNewTrees = 1
-          val tempRF = new WahooRandomForestClassifier()
-          tempRF.setNumTrees(numNewTrees)
-          tempRF.setMaxDepth(this.getMaxDepth)
-          val model = tempRF.fit(dataset)
-          val r = scala.util.Random
-          val newTrees: ArrayBuffer[DecisionTreeClassificationModel] = new ArrayBuffer()
-          val newWeights: ArrayBuffer[Double] = new ArrayBuffer()
-          Range(numNewTrees, oldModel.trees.length).map { treeIndex => {
-            newTrees += oldModel._trees(treeIndex)
-            newWeights += oldModel.weights(treeIndex)
-          }}
-          Range(0, numNewTrees).map { treeIndex =>
-            newTrees += model._trees(treeIndex)
-            newWeights += model.weights(treeIndex)
-          }
-          val newModel = new RandomForestClassificationModel(newTrees.toArray, numFeatures, numClasses,
-            oldModel.splits, oldModel.metadata, wahooStrategy)
-          newModel.weights = newWeights.toArray
-          newModel
-        }
-        case DefaultStrategy => {
-          train(dataset)
-        }
-        case _ => {
-          throw new IllegalArgumentException("Unknown wahoo strategy.")
-        }
+    // TODO store weights in decision trees
+    oldModel.reweightByBatchShift
+    val incrementalTrees: ArrayBuffer[DecisionTreeClassificationModel] = new ArrayBuffer()
+    val maintainedTrees: ArrayBuffer[DecisionTreeClassificationModel] = new ArrayBuffer()
+    var numReplacedTrees = 0
+    val treeSelector = scala.util.Random
+    oldModel._trees.foreach(tree => {
+      if (treeSelector.nextFloat < 0.5) {
+        incrementalTrees += tree
+      } else if (treeSelector.nextFloat() < 0.8) {
+        maintainedTrees += tree
+      } else { // otherwise, replace the tree
+        numReplacedTrees += 1
       }
-    }
+    })
+    val incrementalUpdatedTrees = WahooRandomForest.runAndUpdateClassifier(
+      incrementalTrees.toArray, oldDataset, strategy,
+      getNumTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
+      oldModel.metadata.get)
+      .map(_.asInstanceOf[DecisionTreeClassificationModel])
+
+    val tempRF = new WahooRandomForestClassifier()
+    tempRF.setNumTrees(numReplacedTrees)
+    tempRF.setMaxDepth(this.getMaxDepth)
+    val model = tempRF.fit(dataset)
+
+    new RandomForestClassificationModel(incrementalUpdatedTrees ++
+      model._trees ++ maintainedTrees, numFeatures, numClasses,
+      oldModel.splits, oldModel.metadata, wahooStrategy)
   }
 
   /**
@@ -216,10 +204,9 @@ final class RandomForestClassificationModel private[ml] (
     this(Identifiable.randomUID("rfc"), trees, numFeatures, numClasses, splits, metadata,
       wahooStrategy)
 
-  var weights: Array[Double] = Range(0, trees.length).map{ index => 1.0 }.toArray
-
   def reweightByBatchShift = {
-    weights = weights.map(_ - (1.0/trees.length))
+    trees.foreach(tree => tree.asInstanceOf[DecisionTreeClassificationModel]
+        .reweightBy(1.0/trees.length))
   }
 
   override def trees: Array[DecisionTreeModel] = _trees.asInstanceOf[Array[DecisionTreeModel]]
@@ -248,7 +235,7 @@ final class RandomForestClassificationModel private[ml] (
       if (total != 0) {
         var i = 0
         while (i < numClasses) {
-          votes(i) += classCounts(i) / total * weights(index)
+          votes(i) += classCounts(i) / total * tree.weight
           i += 1
         }
       }

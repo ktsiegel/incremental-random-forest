@@ -111,6 +111,8 @@ final class DecisionTreeClassificationModel private[ml] (
   extends ProbabilisticClassificationModel[Vector, DecisionTreeClassificationModel]
     with DecisionTreeModel with Serializable {
 
+  var weight = 1.0
+
   require(rootNode != null,
     "DecisionTreeClassificationModel given null rootNode, but it requires a non-null rootNode.")
 
@@ -121,6 +123,10 @@ final class DecisionTreeClassificationModel private[ml] (
     */
   private[ml] def this(rootNode: Node, numClasses: Int) =
     this(Identifiable.randomUID("dtc"), rootNode, numClasses)
+
+  def reweightBy(shift: Double) = {
+    weight -= shift
+  }
 
   override protected def predict(features: Vector): Double = {
     rootNode.predictImpl(features).prediction
