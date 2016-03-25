@@ -120,7 +120,9 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     var numReplacedTrees = 0
     val treeSelector = scala.util.Random
     oldModel._trees.foreach(tree => {
-      if (treeSelector.nextFloat < 0.5) {
+      if (tree.weight < 0.1) {
+        numReplacedTrees += 1
+      } else if (treeSelector.nextFloat < 0.5) {
         incrementalTrees += tree
       } else if (treeSelector.nextFloat() < 0.8) {
         maintainedTrees += tree
@@ -128,16 +130,18 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
         numReplacedTrees += 1
       }
     })
+    val origMaxDepth = this.getMaxDepth
+    // TODO fix
+    this.setMaxDepth(this.getMaxDepth+1)
     val incrementalUpdatedTrees = WahooRandomForest.runAndUpdateClassifier(
       incrementalTrees.toArray, oldDataset, strategy,
-      getNumTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
+      incrementalTrees.length, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
       oldModel.metadata.get)
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
-    val tempRF = new WahooRandomForestClassifier()
-    tempRF.setNumTrees(numReplacedTrees)
-    tempRF.setMaxDepth(this.getMaxDepth)
-    val model = tempRF.fit(dataset)
+    this.setNumTrees(numReplacedTrees)
+    this.setMaxDepth(origMaxDepth)
+    val model = fit(dataset)
 
     new RandomForestClassificationModel(incrementalUpdatedTrees ++
       model._trees ++ maintainedTrees, numFeatures, numClasses,
