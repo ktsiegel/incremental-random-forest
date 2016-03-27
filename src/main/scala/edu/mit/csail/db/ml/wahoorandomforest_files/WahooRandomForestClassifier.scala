@@ -71,7 +71,7 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
       super.getOldStrategy(categoricalFeatures, numClasses, OldAlgo.Classification, getOldImpurity)
     val numFeatures = oldDataset.first().features.size
 
-    val maxDepths = Range(0,getMaxDepth).map(_ => getMaxDepth)
+    val maxDepths = Range(0,getNumTrees).map(_ => getMaxDepth)
 
     val (trees, splits, metadata) =
       WahooRandomForest.run(oldDataset, strategy, getNumTrees, getFeatureSubsetStrategy,
