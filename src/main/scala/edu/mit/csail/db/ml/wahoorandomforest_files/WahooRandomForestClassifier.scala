@@ -25,8 +25,14 @@ import scala.collection.mutable.ArrayBuffer
 class WahooRandomForestClassifier(override val uid: String) extends RandomForestClassifier {
 
   this.wahooStrategy = new WahooStrategy(false, RandomReplacementStrategy)
+  this.initialMaxDepth = 0
 
   def this() = this(Identifiable.randomUID("rfc"))
+
+  override def setInitialMaxDepth(depth: Int) = {
+    this.initialMaxDepth = depth
+    this.setMaxDepth(depth)
+  }
 
   /**
    * Trains a model for future online learning by maintaining candidate splits
@@ -65,9 +71,11 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
       super.getOldStrategy(categoricalFeatures, numClasses, OldAlgo.Classification, getOldImpurity)
     val numFeatures = oldDataset.first().features.size
 
+    val maxDepths = Range(0,getNumTrees).map(_ => getMaxDepth)
+
     val (trees, splits, metadata) =
       WahooRandomForest.run(oldDataset, strategy, getNumTrees, getFeatureSubsetStrategy,
-        getSeed, wahooStrategy)
+        getSeed, wahooStrategy, maxDepths.toArray)
 
     if (wahooStrategy.isIncremental) {
       new RandomForestClassificationModel(
@@ -122,6 +130,8 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
     oldModel._trees.foreach(tree => {
       if (tree.weight < 0.1) {
         numReplacedTrees += 1
+      } else if (tree.maxDepth == 30) {
+        numReplacedTrees += 1
       } else if (treeSelector.nextFloat < 0.5) {
         incrementalTrees += tree
       } else if (treeSelector.nextFloat() < 0.8) {
@@ -130,21 +140,25 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
         numReplacedTrees += 1
       }
     })
-    val origMaxDepth = this.getMaxDepth
-    // TODO fix
-    this.setMaxDepth(this.getMaxDepth+1)
+
+    // Incremental trees
+    val incrementalMaxDepths = incrementalTrees.toArray.map(_.maxDepth + 1)
+    incrementalTrees.foreach(_.incrementMaxDepth)
     val incrementalUpdatedTrees = WahooRandomForest.runAndUpdateClassifier(
-      incrementalTrees.toArray, oldDataset, strategy,
-      incrementalTrees.length, getFeatureSubsetStrategy, getSeed, wahooStrategy, oldModel.splits.get,
-      oldModel.metadata.get)
+      Some(incrementalTrees.toArray), oldDataset, strategy,
+      incrementalTrees.length, getFeatureSubsetStrategy, getSeed, wahooStrategy,
+      incrementalMaxDepths, oldModel.splits.get, oldModel.metadata.get)
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
-    this.setNumTrees(numReplacedTrees)
-    this.setMaxDepth(origMaxDepth)
-    val model = fit(dataset)
+    val replacementMaxDepths = Range(0,numReplacedTrees).map(_ => getMaxDepth).toArray
+    val replacementTrees = WahooRandomForest.runAndUpdateClassifier(
+      None, oldDataset, strategy,
+      numReplacedTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy,
+      replacementMaxDepths, oldModel.splits.get, oldModel.metadata.get)
+      .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
     new RandomForestClassificationModel(incrementalUpdatedTrees ++
-      model._trees ++ maintainedTrees, numFeatures, numClasses,
+      replacementTrees ++ maintainedTrees, numFeatures, numClasses,
       oldModel.splits, oldModel.metadata, wahooStrategy)
   }
 

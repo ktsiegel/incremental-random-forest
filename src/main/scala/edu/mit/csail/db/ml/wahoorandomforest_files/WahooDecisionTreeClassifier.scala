@@ -107,7 +107,8 @@ object DecisionTreeClassifier {
 final class DecisionTreeClassificationModel private[ml] (
                                                           override val uid: String,
                                                           override val rootNode: Node,
-                                                          override val numClasses: Int)
+                                                          override val numClasses: Int,
+                                                          var maxDepth: Int)
   extends ProbabilisticClassificationModel[Vector, DecisionTreeClassificationModel]
     with DecisionTreeModel with Serializable {
 
@@ -121,11 +122,16 @@ final class DecisionTreeClassificationModel private[ml] (
     *
     * @param rootNode  Root node of tree, with other nodes attached.
     */
-  private[ml] def this(rootNode: Node, numClasses: Int) =
-    this(Identifiable.randomUID("dtc"), rootNode, numClasses)
+  private[ml] def this(rootNode: Node, numClasses: Int, maxDepth: Int) =
+    this(Identifiable.randomUID("dtc"), rootNode, numClasses, 30)
 
   def reweightBy(shift: Double) = {
     weight -= shift
+  }
+
+  def incrementMaxDepth = {
+    assert(maxDepth + 1 <= 30, "This depth is not supported.")
+    maxDepth = maxDepth + 1
   }
 
   override protected def predict(features: Vector): Double = {
@@ -148,7 +154,8 @@ final class DecisionTreeClassificationModel private[ml] (
   }
 
   override def copy(extra: ParamMap): DecisionTreeClassificationModel = {
-    copyValues(new DecisionTreeClassificationModel(uid, rootNode, numClasses), extra)
+    copyValues(new DecisionTreeClassificationModel(uid, rootNode, numClasses, maxDepth),
+      extra)
       .setParent(parent)
   }
 
@@ -174,6 +181,6 @@ private[ml] object DecisionTreeClassificationModel {
         s" DecisionTreeClassificationModel (new API).  Algo is: ${oldModel.algo}")
     val rootNode = Node.fromOld(oldModel.topNode, categoricalFeatures)
     val uid = if (parent != null) parent.uid else Identifiable.randomUID("dtc")
-    new DecisionTreeClassificationModel(uid, rootNode, -1)
+    new DecisionTreeClassificationModel(uid, rootNode, -1, 30)
   }
 }

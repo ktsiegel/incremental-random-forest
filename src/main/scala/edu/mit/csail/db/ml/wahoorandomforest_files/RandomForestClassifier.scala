@@ -46,12 +46,15 @@ class RandomForestClassifier(override val uid: String)
   def this() = this(Identifiable.randomUID("rfc"))
 
   var wahooStrategy: WahooStrategy = null
+  var initialMaxDepth: Int = 0
 
   // Override parameter setters from parent trait for Java API compatibility.
 
   // Parameters from TreeClassifierParams:
 
   override def setMaxDepth(value: Int): this.type = super.setMaxDepth(value)
+
+  def setInitialMaxDepth(value: Int) = { this.initialMaxDepth = 0 }
 
   override def setMaxBins(value: Int): this.type = super.setMaxBins(value)
 

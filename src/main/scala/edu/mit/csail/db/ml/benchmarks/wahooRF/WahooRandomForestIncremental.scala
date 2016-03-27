@@ -93,7 +93,7 @@ object WahooRandomForestIncremental {
                        predictive: Boolean,
                        erf: Boolean) {
     rf.wahooStrategy = new WahooStrategy(false, CombinedStrategy)
-		rf.setMaxDepth(initialDepth)
+		rf.setInitialMaxDepth(initialDepth)
     val timer = new TimeTracker()
     var numPoints = batches(0).count()
     timer.start("training 0")

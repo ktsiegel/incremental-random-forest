@@ -19,6 +19,7 @@ package org.apache.spark.ml.wahoo.tree
 
 import java.io.IOException
 
+import org.apache.commons.lang.NotImplementedException
 import org.apache.spark.ml.wahoo.{WahooStrategy, Strategy}
 
 import scala.collection.mutable
@@ -51,6 +52,7 @@ private[ml] object WahooRandomForest extends Logging {
            featureSubsetStrategy: String,
            seed: Long,
            wahooStrategy: WahooStrategy,
+           maxDepths: Array[Int],
            parentUID: Option[String] = None):
   (Array[DecisionTreeModel], Array[Array[Split]], DecisionTreeMetadata) = {
 
@@ -160,7 +162,7 @@ private[ml] object WahooRandomForest extends Logging {
       // Choose node splits, and enqueue new nodes as needed.
       timer.start("findBestSplits")
       WahooRandomForest.findBestSplits(baggedInput, metadata, topNodes, nodesForGroup,
-        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, wahooStrategy)
+        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, wahooStrategy, maxDepths)
       timer.stop("findBestSplits")
     }
 
@@ -181,39 +183,33 @@ private[ml] object WahooRandomForest extends Logging {
       }
     }
 
-    val model: Array[DecisionTreeModel] = parentUID match {
+    assert(strategy.algo == OldAlgo.Classification, "Error: algo not supported.")
+    val models: Array[DecisionTreeModel] = parentUID match {
       case Some(uid) =>
-        if (strategy.algo == OldAlgo.Classification) {
-          topNodes.map { rootNode =>
-            new DecisionTreeClassificationModel(uid, rootNode.makeNode, strategy.getNumClasses)
-              .asInstanceOf[DecisionTreeModel]
-          }
-        } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.makeNode)
-            .asInstanceOf[DecisionTreeModel])
+        topNodes.zipWithIndex.map { case (rootNode, treeIndex) =>
+          new DecisionTreeClassificationModel(uid, rootNode.makeNode, strategy.getNumClasses,
+            maxDepths(treeIndex))
+            .asInstanceOf[DecisionTreeModel]
         }
       case None =>
-        if (strategy.algo == OldAlgo.Classification) {
-          topNodes.map { rootNode =>
-            new DecisionTreeClassificationModel(rootNode.makeNode, strategy.getNumClasses)
-              .asInstanceOf[DecisionTreeModel]
-          }
-        } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.makeNode)
-            .asInstanceOf[DecisionTreeModel])
+        topNodes.zipWithIndex.map { case (rootNode, treeIndex) =>
+          new DecisionTreeClassificationModel(rootNode.makeNode, strategy.getNumClasses,
+            maxDepths(treeIndex))
+            .asInstanceOf[DecisionTreeModel]
         }
     }
-    (model, splits, metadata)
+    (models, splits, metadata)
   }
 
   def runAndUpdateClassifier(
-           trees: Array[DecisionTreeClassificationModel],
+           trees: Option[Array[DecisionTreeClassificationModel]],
            input: RDD[LabeledPoint],
            strategy: OldStrategy,
            numTrees: Int,
            featureSubsetStrategy: String,
            seed: Long,
            wahooStrategy: WahooStrategy,
+           maxDepths: Array[Int],
            splits: Array[Array[Split]],
            oldMetadata: DecisionTreeMetadata,
            parentUID: Option[String] = None): Array[DecisionTreeModel] = {
@@ -316,13 +312,23 @@ private[ml] object WahooRandomForest extends Logging {
     rng.setSeed(seed)
 
     // Allocate and queue root nodes.
-    val topNodes: Array[LearningNode] = trees.map(_.rootNode.asInstanceOf[LearningNode])
-    // Enqueue leaf nodes
-    Range(0, numTrees).foreach(treeIndex => {
-      LearningNode.getLeaves(topNodes(treeIndex)).foreach(node => {
-        nodeQueue.enqueue((treeIndex, node))
-      })
-    })
+    val topNodes = trees match {
+      case Some(ts) => {
+        val topNodes: Array[LearningNode] = ts.map(_.rootNode.asInstanceOf[LearningNode])
+        // Enqueue leaf nodes
+        Range(0, numTrees).foreach(treeIndex => {
+          LearningNode.getLeaves(topNodes(treeIndex)).foreach(node => {
+            nodeQueue.enqueue((treeIndex, node))
+          })
+        })
+        topNodes
+      }
+      case None => {
+        val topNodes = Array.fill[LearningNode](numTrees)(LearningNode.emptyNode(nodeIndex = 1))
+        Range(0, numTrees).foreach(treeIndex => nodeQueue.enqueue((treeIndex, topNodes(treeIndex))))
+        topNodes
+      }
+    }
 
     // Modification for online learning: we store aggregate statistics at
     // leaf nodes only, so we can track advantageous splits in the future.
@@ -338,7 +344,8 @@ private[ml] object WahooRandomForest extends Logging {
       // Choose node splits, and enqueue new nodes as needed.
       timer.start("findBestSplits")
       WahooRandomForest.findBestSplits(baggedInput, metadata, topNodes, nodesForGroup,
-        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, wahooStrategy)
+        treeToNodeToIndexInfo, splits, nodeQueue, timer, nodeIdCache, wahooStrategy,
+        maxDepths)
       timer.stop("findBestSplits")
     }
 
@@ -359,28 +366,45 @@ private[ml] object WahooRandomForest extends Logging {
       }
     }
 
-    parentUID match {
+    assert(strategy.algo == OldAlgo.Classification, "Error: algo not supported.")
+    val models: Array[DecisionTreeModel] = parentUID match {
       case Some(uid) =>
-        if (strategy.algo == OldAlgo.Classification) {
-          topNodes.map { rootNode =>
-            new DecisionTreeClassificationModel(uid, rootNode.makeNode, strategy.getNumClasses)
-              .asInstanceOf[DecisionTreeModel]
-          }
-        } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.makeNode)
-            .asInstanceOf[DecisionTreeModel])
+        topNodes.zipWithIndex.map { case (rootNode, treeIndex) =>
+          new DecisionTreeClassificationModel(uid, rootNode.makeNode, strategy.getNumClasses,
+            maxDepths(treeIndex))
+            .asInstanceOf[DecisionTreeModel]
         }
       case None =>
-        if (strategy.algo == OldAlgo.Classification) {
-          topNodes.map { rootNode =>
-            new DecisionTreeClassificationModel(rootNode.makeNode, strategy.getNumClasses)
-              .asInstanceOf[DecisionTreeModel]
-          }
-        } else {
-          topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.makeNode)
-            .asInstanceOf[DecisionTreeModel])
+        topNodes.zipWithIndex.map { case (rootNode, treeIndex) =>
+          new DecisionTreeClassificationModel(rootNode.makeNode, strategy.getNumClasses,
+            maxDepths(treeIndex))
+            .asInstanceOf[DecisionTreeModel]
         }
     }
+    models
+
+    // parentUID match {
+    //   case Some(uid) =>
+    //     if (strategy.algo == OldAlgo.Classification) {
+    //       topNodes.map { rootNode =>
+    //         new DecisionTreeClassificationModel(uid, rootNode.makeNode, strategy.getNumClasses)
+    //           .asInstanceOf[DecisionTreeModel]
+    //       }
+    //     } else {
+    //       topNodes.map(rootNode => new DecisionTreeRegressionModel(uid, rootNode.makeNode)
+    //         .asInstanceOf[DecisionTreeModel])
+    //     }
+    //   case None =>
+    //     if (strategy.algo == OldAlgo.Classification) {
+    //       topNodes.map { rootNode =>
+    //         new DecisionTreeClassificationModel(rootNode.makeNode, strategy.getNumClasses)
+    //           .asInstanceOf[DecisionTreeModel]
+    //       }
+    //     } else {
+    //       topNodes.map(rootNode => new DecisionTreeRegressionModel(rootNode.makeNode)
+    //         .asInstanceOf[DecisionTreeModel])
+    //     }
+    // }
   }
 
   /**
@@ -553,7 +577,8 @@ private[ml] object WahooRandomForest extends Logging {
                                     nodeQueue: mutable.Queue[(Int, LearningNode)],
                                     timer: TimeTracker = new TimeTracker,
                                     nodeIdCache: Option[NodeIdCache] = None,
-                                    wahooStrategy: WahooStrategy): Unit = {
+                                    wahooStrategy: WahooStrategy,
+                                    maxDepths: Array[Int]): Unit = {
 
     /*
      * The high-level descriptions of the best split optimizations are noted here.
@@ -794,7 +819,8 @@ private[ml] object WahooRandomForest extends Logging {
 
         // Extract info for this node.  Create children if not leaf.
         val isLeaf = node.isLeaf ||
-          (stats.get.gain <= 0) || (LearningNode.indexToLevel(nodeIndex) >= metadata.maxDepth)
+          (stats.get.gain <= 0) ||
+          (LearningNode.indexToLevel(nodeIndex) >= maxDepths(treeIndex))
         node.isLeaf = isLeaf
         node.stats = stats.getOrElse(null)
         logDebug("Node = " + node)
@@ -805,7 +831,7 @@ private[ml] object WahooRandomForest extends Logging {
         }
         else if (!isLeaf) {
           node.split = split
-          val childIsLeaf = (LearningNode.indexToLevel(nodeIndex) + 1) >= metadata.maxDepth
+          val childIsLeaf = (LearningNode.indexToLevel(nodeIndex) + 1) >= maxDepths(treeIndex)
           val leftChildIsLeaf = childIsLeaf || (stats.get.leftImpurity == 0.0)
           val rightChildIsLeaf = childIsLeaf || (stats.get.rightImpurity == 0.0)
           node.leftChild = Some(LearningNode(LearningNode.leftChildIndex(nodeIndex),
