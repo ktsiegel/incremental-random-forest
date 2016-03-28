@@ -123,7 +123,7 @@ final class DecisionTreeClassificationModel private[ml] (
     * @param rootNode  Root node of tree, with other nodes attached.
     */
   private[ml] def this(rootNode: Node, numClasses: Int, maxDepth: Int) =
-    this(Identifiable.randomUID("dtc"), rootNode, numClasses, 30)
+    this(Identifiable.randomUID("dtc"), rootNode, numClasses, maxDepth)
 
   def reweightBy(shift: Double) = {
     weight -= shift
