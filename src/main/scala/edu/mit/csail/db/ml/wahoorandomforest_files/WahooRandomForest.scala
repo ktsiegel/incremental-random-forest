@@ -77,6 +77,7 @@ private[ml] object WahooRandomForest extends Logging {
     // of the input data.
     timer.start("findSplitsBins")
     val splits: Array[Array[Split]] = findSplits(retaggedInput, metadata)
+    println(splits(0).length)
     timer.stop("findSplitsBins")
     logDebug("numBins: feature: number of bins")
     logDebug(Range(0, metadata.numFeatures).map { featureIndex =>
@@ -214,6 +215,7 @@ private[ml] object WahooRandomForest extends Logging {
            oldMetadata: DecisionTreeMetadata,
            parentUID: Option[String] = None): Array[DecisionTreeModel] = {
 
+    println(splits(0).length)
     val timer = new TimeTracker()
 
     timer.start("total")
