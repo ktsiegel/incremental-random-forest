@@ -153,14 +153,6 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
       incrementalMaxDepths, oldModel.splits.get, oldModel.metadata.get)
       .map(_.asInstanceOf[DecisionTreeClassificationModel])
 
-//    val replacementMaxDepths = Range(0,numReplacedTrees).map(_ => getMaxDepth).toArray
-//    val replacementTrees = WahooRandomForest.runAndUpdateClassifier(
-//      None, oldDataset, strategy,
-//      numReplacedTrees, getFeatureSubsetStrategy, getSeed, wahooStrategy,
-//      replacementMaxDepths, oldModel.splits.get, oldModel.metadata.get)
-//      .map(_.asInstanceOf[DecisionTreeClassificationModel])
-
-    println("Trained new model with " + numReplacedTrees + " trees replaced and " +
     incrementalTrees.length + " trees grown incrementally")
     new RandomForestClassificationModel(updatedTrees ++
       maintainedTrees, numFeatures, numClasses,
