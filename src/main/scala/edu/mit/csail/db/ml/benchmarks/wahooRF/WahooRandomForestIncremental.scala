@@ -108,8 +108,6 @@ object WahooRandomForestIncremental {
     println(numPoints)
     println(time)
     println((1.0 - accuracy))
-		var currDepth = initialDepth + incrementParam
-    var currDF = batches(0)
 
     Range(1,numBatches).map { batch => {
       numPoints += batches(batch).count()

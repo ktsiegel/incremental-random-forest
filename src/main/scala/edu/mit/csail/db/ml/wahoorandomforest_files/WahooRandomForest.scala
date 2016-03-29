@@ -203,7 +203,7 @@ private[ml] object WahooRandomForest extends Logging {
   }
 
   def runAndUpdateClassifier(
-           trees: Option[Array[DecisionTreeClassificationModel]],
+           trees: Array[Option[DecisionTreeClassificationModel]],
            input: RDD[LabeledPoint],
            strategy: OldStrategy,
            numTrees: Int,
@@ -215,7 +215,6 @@ private[ml] object WahooRandomForest extends Logging {
            oldMetadata: DecisionTreeMetadata,
            parentUID: Option[String] = None): Array[DecisionTreeModel] = {
 
-    println(splits(0).length)
     val timer = new TimeTracker()
 
     timer.start("total")
@@ -313,24 +312,35 @@ private[ml] object WahooRandomForest extends Logging {
     val rng = new Random()
     rng.setSeed(seed)
 
-    // Allocate and queue root nodes.
-    val topNodes = trees match {
-      case Some(ts) => {
-        val topNodes: Array[LearningNode] = ts.map(_.rootNode.asInstanceOf[LearningNode])
-        // Enqueue leaf nodes
-        Range(0, numTrees).foreach(treeIndex => {
-          LearningNode.getLeaves(topNodes(treeIndex)).foreach(node => {
-            nodeQueue.enqueue((treeIndex, node))
-          })
-        })
-        topNodes
-      }
-      case None => {
-        val topNodes = Array.fill[LearningNode](numTrees)(LearningNode.emptyNode(nodeIndex = 1))
-        Range(0, numTrees).foreach(treeIndex => nodeQueue.enqueue((treeIndex, topNodes(treeIndex))))
-        topNodes
-      }
-    }
+    // // Allocate and queue root nodes.
+    // val topNodes = trees match {
+    //   case Some(ts) => {
+    //     val topNodes: Array[LearningNode] = ts.map(_.rootNode.asInstanceOf[LearningNode])
+    //     // Enqueue leaf nodes
+    //     Range(0, numTrees).foreach(treeIndex => {
+    //       LearningNode.getLeaves(topNodes(treeIndex)).foreach(node => {
+    //         nodeQueue.enqueue((treeIndex, node))
+    //       })
+    //     })
+    //     topNodes
+    //   }
+    //   case None => {
+    //     val topNodes = Array.fill[LearningNode](numTrees)(LearningNode.emptyNode(nodeIndex = 1))
+    //     Range(0, numTrees).foreach(treeIndex => nodeQueue.enqueue((treeIndex, topNodes(treeIndex))))
+    //     topNodes
+    //   }
+    // }
+
+    val topNodes: Array[LearningNode] = trees.map(tree => tree match {
+      case Some(t) => t.rootNode.asInstanceOf[LearningNode]
+      case None => LearningNode.emptyNode(nodeIndex = 1)
+    })
+    // Enqueue leaf nodes
+    Range(0, numTrees).foreach(treeIndex => {
+      LearningNode.getLeaves(topNodes(treeIndex)).foreach(node => {
+        nodeQueue.enqueue((treeIndex, node))
+      })
+    })
 
     // Modification for online learning: we store aggregate statistics at
     // leaf nodes only, so we can track advantageous splits in the future.
@@ -813,13 +823,8 @@ private[ml] object WahooRandomForest extends Logging {
           nodeToBestSplits(aggNodeIndex)
         logDebug("best split = " + split)
 
-				// TODO fix node level
-				// println("is leaf before: " + node.isLeaf)
-				// println("node level: " + LearningNode.indexToLevel(nodeIndex))
-				// println("metadata max depth: " + metadata.maxDepth)
-				// println("gain: " + stats.gain)
-
         // Extract info for this node.  Create children if not leaf.
+        // TODO test different gain thresholds
         val isLeaf = node.isLeaf ||
           (stats.get.gain <= 0) ||
           (LearningNode.indexToLevel(nodeIndex) >= maxDepths(treeIndex))
