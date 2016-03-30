@@ -330,16 +330,29 @@ private[ml] object WahooRandomForest extends Logging {
     //   }
     // }
 
+    var index = 0
     val topNodes: Array[LearningNode] = trees.map(tree => tree match {
-      case Some(t) => t.rootNode.asInstanceOf[LearningNode]
-      case None => LearningNode.emptyNode(nodeIndex = 1)
+      case Some(t) => {
+        val topNode = t.rootNode.asInstanceOf[LearningNode]
+        LearningNode.getLeaves(topNode).foreach(node => {
+          nodeQueue.enqueue((index, node))
+        })
+        index += 1
+        topNode
+      }
+      case None => {
+        val topNode = LearningNode.emptyNode(nodeIndex = 1)
+        nodeQueue.enqueue((index, topNode))
+        index += 1
+        topNode
+      }
     })
     // Enqueue leaf nodes
-    Range(0, numTrees).foreach(treeIndex => {
-      LearningNode.getLeaves(topNodes(treeIndex)).foreach(node => {
-        nodeQueue.enqueue((treeIndex, node))
-      })
-    })
+    // Range(0, numTrees).foreach(treeIndex => {
+    //   LearningNode.getLeaves(topNodes(treeIndex)).foreach(node => {
+    //     nodeQueue.enqueue((treeIndex, node))
+    //   })
+    // })
 
     // Modification for online learning: we store aggregate statistics at
     // leaf nodes only, so we can track advantageous splits in the future.
