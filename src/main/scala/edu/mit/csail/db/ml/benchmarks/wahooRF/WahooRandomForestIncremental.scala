@@ -67,7 +67,7 @@ object WahooRandomForestIncremental {
 
     val numBatches = 10
     val batches = generateBatches(numBatches, df)
-    runAllBenchmarks(rf, evaluator, batches, numBatches, 3, 2, sc, sqlContext, true, false)
+    runAllBenchmarks(rf, evaluator, batches, numBatches, 10, 1, sc, sqlContext, true, false)
   }
 
   def generateBatches(numBatches: Int, df: DataFrame): Array[DataFrame] = {
