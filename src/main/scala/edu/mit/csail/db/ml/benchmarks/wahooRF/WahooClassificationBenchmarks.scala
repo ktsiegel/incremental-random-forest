@@ -38,22 +38,20 @@ object WahooPlane {
     val sc = new SparkContext(conf)
     val sqlContext = new SQLContext(sc)
     val numBatches = 20
-    val indexer = WahooUtils.createStringIndexer("ArrDel15", "label")
-    val binarizer = WahooUtils.makeBinarizer("cnt", "ArrDel15", 120)
+    val indexer = WahooUtils.createStringIndexer("ARR_DEL15", "label")
 
     val batches: Array[DataFrame] = Range(1,numBatches+2).map { index => {
-      val trainingDataPath = "kaggleData/plane/" + index.toString + ".csv"
+      val trainingDataPath = "benchmark_data/plane/" + index.toString + ".csv"
       var df: DataFrame = WahooUtils.readData(trainingDataPath, sqlContext)
       df = WahooUtils.processIntColumns(df)
       df = WahooUtils.processStringColumnsAsInt(df)
-      df = binarizer.transform(df)
-      val numericFields = WahooUtils.getNumericFields(df, Array("cnt", "ArrDel15"))
+      val numericFields = WahooUtils.getNumericFields(df, Array("ARR_DEL15"))
       val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
       val processStages: Array[PipelineStage] = Array(indexer, assembler)
       WahooUtils.processDataFrame(df, processStages)
     }}.toArray
 
-    val evaluator = WahooUtils.createEvaluator("ArrDel15", "prediction")
+    val evaluator = WahooUtils.createEvaluator("ARR_DEL15", "prediction")
     val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")

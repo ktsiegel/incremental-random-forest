@@ -134,9 +134,9 @@ class WahooRandomForestClassifier(override val uid: String) extends RandomForest
       } else if (tree.maxDepth == 30) {
         println("option 2")
         numReplacedTrees += 1
-      } else if (treeSelector.nextFloat < 0.5) {
+      } else if (treeSelector.nextFloat < 0.8) {
         incrementalTrees += tree
-      } else if (treeSelector.nextFloat() < 0.8) {
+      } else if (treeSelector.nextFloat() < 0) {
         maintainedTrees += tree
       } else { // otherwise, replace the tree
         numReplacedTrees += 1
