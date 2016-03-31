@@ -43,8 +43,11 @@ object WahooPlane {
     val batches: Array[DataFrame] = Range(1,numBatches+2).map { index => {
       val trainingDataPath = "benchmark_data/plane/" + index.toString + ".csv"
       var df: DataFrame = WahooUtils.readData(trainingDataPath, sqlContext)
+
+
       df = WahooUtils.processIntColumns(df)
       df = WahooUtils.processStringColumnsAsInt(df)
+
       val numericFields = WahooUtils.getNumericFields(df, Array("ARR_DEL15"))
       val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
       val processStages: Array[PipelineStage] = Array(indexer, assembler)

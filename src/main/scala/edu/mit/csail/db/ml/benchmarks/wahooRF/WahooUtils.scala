@@ -54,13 +54,20 @@ object WahooUtils {
 
   def processStringColumnsAsInt(dataset: DataFrame): DataFrame = {
     var df = dataset
+
+    def processMissingCategory =
+      org.apache.spark.sql.functions.udf[String, String] {
+      s => if (s == "") "0"  else s
+    }
+
     val toDouble = org.apache.spark.sql.functions.udf[Double, String](label => {
       label.toDouble
     })
     df.schema.foreach( entry => {
       entry.dataType match {
         case StringType => {
-          if (entry.name != "dteday") {
+          if (entry.name != "dteday" && entry.name != "TAIL_NUM") {
+            df = df.withColumn(entry.name, processMissingCategory(df(entry.name)))
             df = df.withColumn(entry.name, toDouble(df(entry.name)))
           }
         }
