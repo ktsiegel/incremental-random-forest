@@ -63,7 +63,7 @@ object WahooRandomForestIncremental {
     val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(10)
+      .setNumTrees(100)
 
     val numBatches = 10
     val batches = generateBatches(numBatches, df)
