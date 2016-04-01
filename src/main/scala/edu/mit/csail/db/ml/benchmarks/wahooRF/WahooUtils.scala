@@ -40,10 +40,15 @@ object WahooUtils {
 
   def processIntColumns(dataset: DataFrame): DataFrame = {
     var df = dataset
+    def processMissingCategory =
+      org.apache.spark.sql.functions.udf[String, String] {
+      s => if (s == "") "0"  else s
+    }
     val toDouble = org.apache.spark.sql.functions.udf[Double, Int](intLabel => intLabel.asInstanceOf[Double])
     df.schema.foreach( entry => {
       entry.dataType match {
         case IntegerType => {
+          df = df.withColumn(entry.name, processMissingCategory(df(entry.name)))
           df = df.withColumn(entry.name, toDouble(df(entry.name)))
         }
         case _ => {}

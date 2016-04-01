@@ -45,8 +45,8 @@ object WahooPlane {
       var df: DataFrame = WahooUtils.readData(trainingDataPath, sqlContext)
 
 
-      df = WahooUtils.processIntColumns(df)
       df = WahooUtils.processStringColumnsAsInt(df)
+      df = WahooUtils.processIntColumns(df)
 
       val numericFields = WahooUtils.getNumericFields(df, Array("ARR_DEL15"))
       val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
