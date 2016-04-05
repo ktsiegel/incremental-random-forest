@@ -112,12 +112,12 @@ object WahooUtils {
 
    def getNumericFields(dataset: DataFrame, labels: Array[String]): Seq[StructField] = {
      dataset.schema.filter(entry =>
-       entry.dataType == DoubleType && !labels.contains(entry.name))
+       entry.dataType == DoubleType && !labels.contains(entry.name) && entry.name.length > 3)
    }
 
   def getNumericFields(dataset: DataFrame, label: String): Seq[StructField] = {
     dataset.schema.filter( entry =>
-      entry.dataType == DoubleType && entry.name != label)
+      entry.dataType == DoubleType && entry.name != label && entry.name.length > 3)
   }
 
   def getStringFields(dataset: DataFrame, names: Option[Array[String]]): Seq[StructField] = {

@@ -37,17 +37,15 @@ object WahooPlane {
       .set("spark.driver.allowMultipleContexts", "true")
     val sc = new SparkContext(conf)
     val sqlContext = new SQLContext(sc)
-    val numBatches = 20
+    val numBatches = 18
     val indexer = WahooUtils.createStringIndexer("ARR_DEL15", "label")
 
     val batches: Array[DataFrame] = Range(1,numBatches+2).map { index => {
-      val trainingDataPath = "benchmark_data/plane/" + index.toString + ".csv"
+      val trainingDataPath = "benchmark_data/plane/" + index.toString + "_processed.csv"
       var df: DataFrame = WahooUtils.readData(trainingDataPath, sqlContext)
 
-
-      df = WahooUtils.processStringColumnsAsInt(df)
       df = WahooUtils.processIntColumns(df)
-
+      df = WahooUtils.processStringColumnsAsInt(df)
       val numericFields = WahooUtils.getNumericFields(df, Array("ARR_DEL15"))
       val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
       val processStages: Array[PipelineStage] = Array(indexer, assembler)
@@ -58,7 +56,7 @@ object WahooPlane {
     val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(10)
+      .setNumTrees(100)
 
     WahooRandomForestIncremental.runAllBenchmarks(rf, evaluator, batches,
       numBatches, 10, 1, sc, sqlContext, true, false)
