@@ -100,39 +100,40 @@ object WahooRandomForestIncremental {
         rf.regrowProp = regrowProp
         rf.incrementalProp = incrementalProp
         println("benchmark: regrow " + regrowProp + ", increment " + incrementalProp)
+        rf.setInitialMaxDepth(initialDepth)
+        val timer = new TimeTracker()
+        var numPoints = batches(0).count()
+        timer.start("training 0")
+        var model = rf.fit(batches(0))
+        var time = timer.stop("training 0")
+        var predictions = if (predictive) {
+          model.transform(batches(1))
+        } else {
+          model.transform(batches.last)
+        }
+        var accuracy = evaluator.evaluate(predictions)
+        println(numPoints)
+        println(time)
+        println((1.0 - accuracy))
+
+        Range(1,numBatches).map { batch => {
+          numPoints += batches(batch).count()
+          timer.start("training " + batch)
+          model = rf.update(model, batches(batch))
+          time = timer.stop("training " + batch)
+          predictions = if (predictive) {
+            model.transform(batches(batch+1))
+          } else {
+            model.transform(batches.last)
+          }
+          accuracy = evaluator.evaluate(predictions)
+          println(numPoints)
+          println(time)
+          println((1.0 - accuracy))
+        }}
       })
     })
-		rf.setInitialMaxDepth(initialDepth)
-    val timer = new TimeTracker()
-    var numPoints = batches(0).count()
-    timer.start("training 0")
-    var model = rf.fit(batches(0))
-    var time = timer.stop("training 0")
-    var predictions = if (predictive) {
-      model.transform(batches(1))
-    } else {
-      model.transform(batches.last)
-    }
-    var accuracy = evaluator.evaluate(predictions)
-    println(numPoints)
-    println(time)
-    println((1.0 - accuracy))
 
-    Range(1,numBatches).map { batch => {
-      numPoints += batches(batch).count()
-      timer.start("training " + batch)
-      model = rf.update(model, batches(batch))
-      time = timer.stop("training " + batch)
-      predictions = if (predictive) {
-        model.transform(batches(batch+1))
-      } else {
-        model.transform(batches.last)
-      }
-      accuracy = evaluator.evaluate(predictions)
-      println(numPoints)
-      println(time)
-      println((1.0 - accuracy))
-    }}
 
     runControlBenchmark(evaluator,batches,numBatches,initialDepth,incrementParam,
       sc,sqlContext,predictive)
