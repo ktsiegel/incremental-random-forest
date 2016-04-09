@@ -47,6 +47,8 @@ class RandomForestClassifier(override val uid: String)
 
   var wahooStrategy: WahooStrategy = null
   var initialMaxDepth: Int = 0
+  var regrowProp: Double = 0.0
+  var incrementalProp: Double = 0.0
 
   // Override parameter setters from parent trait for Java API compatibility.
 

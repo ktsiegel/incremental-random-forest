@@ -93,6 +93,15 @@ object WahooRandomForestIncremental {
                        predictive: Boolean,
                        erf: Boolean) {
     rf.wahooStrategy = new WahooStrategy(false, CombinedStrategy)
+    val regrowProps = Array(0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+    val incrementalProps = Array(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+    regrowProps.foreach(regrowProp => {
+      incrementalProps.foreach(incrementalProp => {
+        rf.regrowProp = regrowProp
+        rf.incrementalProp = incrementalProp
+        println("benchmark: regrow " + regrowProp + ", increment " + incrementalProp)
+      })
+    })
 		rf.setInitialMaxDepth(initialDepth)
     val timer = new TimeTracker()
     var numPoints = batches(0).count()
@@ -124,6 +133,9 @@ object WahooRandomForestIncremental {
       println(time)
       println((1.0 - accuracy))
     }}
+
+    runControlBenchmark(evaluator,batches,numBatches,initialDepth,incrementParam,
+      sc,sqlContext,predictive)
   }
 
   def runControlBenchmark(evaluator: MulticlassClassificationEvaluator,
@@ -134,6 +146,7 @@ object WahooRandomForestIncremental {
 									 sc: SparkContext,
 									 sqlContext: SQLContext,
                    predictive: Boolean) {
+    println("benchmark: control")
     val rf: org.apache.spark.ml.classification.RandomForestClassifier =
       new org.apache.spark.ml.classification.RandomForestClassifier()
       .setLabelCol("label")
