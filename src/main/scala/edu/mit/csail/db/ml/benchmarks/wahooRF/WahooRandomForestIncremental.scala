@@ -38,9 +38,9 @@ object WahooRandomForestIncremental {
     val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(100)
+      .setNumTrees(10)
 
-    var numBatches = 100
+    var numBatches = 1000
     val batches = generateBatches(numBatches, df)
     numBatches = 10
     runAllBenchmarks(rf, evaluator, batches, numBatches, 10, 1, sc, sqlContext, true, false)
@@ -94,46 +94,46 @@ object WahooRandomForestIncremental {
                        predictive: Boolean,
                        erf: Boolean) {
     rf.wahooStrategy = new WahooStrategy(false, CombinedStrategy)
-    // val regrowProps = Array(0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
-    val regrowProps = Array(0.1)
-    // val incrementalProps = Array(0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
-    val incrementalProps = Array(0.0)
+    val regrowProps = Array(0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+    val incrementalProps = Array(0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
     regrowProps.foreach(regrowProp => {
       incrementalProps.foreach(incrementalProp => {
-        rf.regrowProp = regrowProp
-        rf.incrementalProp = incrementalProp
-        println("benchmark: regrow " + regrowProp + ", increment " + incrementalProp)
-        rf.setInitialMaxDepth(initialDepth)
-        val timer = new TimeTracker()
-        var numPoints = batches(0).count()
-        timer.start("training 0")
-        var model = rf.fit(batches(0))
-        var time = timer.stop("training 0")
-        var predictions = if (predictive) {
-          model.transform(batches(1))
-        } else {
-          model.transform(batches.last)
-        }
-        var accuracy = evaluator.evaluate(predictions)
-        println(numPoints)
-        println(time)
-        println((1.0 - accuracy))
-
-        Range(1,numBatches).map { batch => {
-          numPoints += batches(batch).count()
-          timer.start("training " + batch)
-          model = rf.update(model, batches(batch))
-          time = timer.stop("training " + batch)
-          predictions = if (predictive) {
-            model.transform(batches(batch+1))
+        if (regrowProp + incrementalProp <= 1.0) {
+          rf.regrowProp = regrowProp
+          rf.incrementalProp = incrementalProp
+          println("benchmark: regrow " + regrowProp + ", increment " + incrementalProp)
+          rf.setInitialMaxDepth(initialDepth)
+          val timer = new TimeTracker()
+          var numPoints = batches(0).count()
+          timer.start("training 0")
+          var model = rf.fit(batches(0))
+          var time = timer.stop("training 0")
+          var predictions = if (predictive) {
+            model.transform(batches(1))
           } else {
             model.transform(batches.last)
           }
-          accuracy = evaluator.evaluate(predictions)
+          var accuracy = evaluator.evaluate(predictions)
           println(numPoints)
           println(time)
           println((1.0 - accuracy))
-        }}
+
+          Range(1,numBatches).map { batch => {
+            numPoints += batches(batch).count()
+            timer.start("training " + batch)
+            model = rf.update(model, batches(batch))
+            time = timer.stop("training " + batch)
+            predictions = if (predictive) {
+              model.transform(batches(batch+1))
+            } else {
+              model.transform(batches.last)
+            }
+            accuracy = evaluator.evaluate(predictions)
+            println(numPoints)
+            println(time)
+            println((1.0 - accuracy))
+          }}
+        }
       })
     })
 
