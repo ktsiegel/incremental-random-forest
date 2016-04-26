@@ -29,6 +29,27 @@ object WahooSantander {
   }
 }
 
+object WahooOttoLarge {
+  def main(args: Array[String]) {
+    WahooRandomForestIncremental.run("kaggleData/otto/otto.csv", "target")
+  }
+}
+object WahooOttoMed {
+  def main(args: Array[String]) {
+    WahooRandomForestIncremental.run("kaggleData/otto/ottomed.csv", "target")
+  }
+}
+object WahooOttoSmall {
+  def main(args: Array[String]) {
+    WahooRandomForestIncremental.run("kaggleData/otto/ottosmall.csv", "target")
+  }
+}
+object WahooOttoXSmall {
+  def main(args: Array[String]) {
+    WahooRandomForestIncremental.run("kaggleData/otto/ottoxsmall.csv", "target")
+  }
+}
+
 object WahooPlane {
   def main(args: Array[String]): Unit = {
     val conf = new SparkConf()
