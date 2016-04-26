@@ -56,7 +56,7 @@ object WahooPlane {
     val rf: RandomForestClassifier = new WahooRandomForestClassifier()
       .setLabelCol("label")
       .setFeaturesCol("features")
-      .setNumTrees(100)
+      .setNumTrees(10)
 
     WahooRandomForestIncremental.runAllBenchmarks(rf, evaluator, batches,
       numBatches, 10, 1, sc, sqlContext, true, false)

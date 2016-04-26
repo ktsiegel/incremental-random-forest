@@ -40,8 +40,9 @@ object WahooRandomForestIncremental {
       .setFeaturesCol("features")
       .setNumTrees(100)
 
-    val numBatches = 100
+    var numBatches = 100
     val batches = generateBatches(numBatches, df)
+    numBatches = 10
     runAllBenchmarks(rf, evaluator, batches, numBatches, 10, 1, sc, sqlContext, true, false)
   }
 
@@ -93,8 +94,10 @@ object WahooRandomForestIncremental {
                        predictive: Boolean,
                        erf: Boolean) {
     rf.wahooStrategy = new WahooStrategy(false, CombinedStrategy)
-    val regrowProps = Array(0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
-    val incrementalProps = Array(0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+    // val regrowProps = Array(0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+    val regrowProps = Array(0.1)
+    // val incrementalProps = Array(0.0,0.1,0.2,0.3,0.4,0.5,0.6,0.7,0.8,0.9,1)
+    val incrementalProps = Array(0.0)
     regrowProps.foreach(regrowProp => {
       incrementalProps.foreach(incrementalProp => {
         rf.regrowProp = regrowProp
@@ -135,8 +138,8 @@ object WahooRandomForestIncremental {
     })
 
 
-    runControlBenchmark(evaluator,batches,numBatches,initialDepth,incrementParam,
-      sc,sqlContext,predictive)
+    // runControlBenchmark(evaluator,batches,numBatches,initialDepth,incrementParam,
+      // sc,sqlContext,predictive)
   }
 
   def runControlBenchmark(evaluator: MulticlassClassificationEvaluator,

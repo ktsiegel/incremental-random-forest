@@ -15,7 +15,7 @@ fo = open(fname + "_processed.csv", 'w')
 firstline = True
 for line in f.readlines():
     if line.find("null") == -1 and line.find(",,") == -1:
-        if firstline or random.random() < 0.01:
+        if firstline or random.random() < 0.1:
             fo.write(line)
         if firstline:
             firstline = False
