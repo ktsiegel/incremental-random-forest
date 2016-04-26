@@ -40,7 +40,7 @@ object WahooRandomForestIncremental {
       .setFeaturesCol("features")
       .setNumTrees(10)
 
-    var numBatches = 1000
+    var numBatches = 10
     val batches = generateBatches(numBatches, df)
     numBatches = 10
     runAllBenchmarks(rf, evaluator, batches, numBatches, 10, 1, sc, sqlContext, true, false)
