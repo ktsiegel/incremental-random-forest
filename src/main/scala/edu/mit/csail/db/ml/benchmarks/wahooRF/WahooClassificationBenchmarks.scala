@@ -84,6 +84,39 @@ object WahooPlane {
   }
 }
 
+object WahooHomesite {
+  def main(args: Array[String]): Unit = {
+    val conf = new SparkConf()
+      .setAppName("Wahoo")
+      .setMaster("local[2]")
+      .set("spark.driver.allowMultipleContexts", "true")
+    val sc = new SparkContext(conf)
+    val sqlContext = new SQLContext(sc)
+    val numBatches = 20
+    val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
+
+    val batches: Array[DataFrame] = Range(0,numBatches).map { index => {
+      val trainingDataPath = "kaggleData/homesite/" + index.toString + "_homesite.csv"
+      var df: DataFrame = WahooUtils.readData(trainingDataPath, sqlContext)
+
+      df = WahooUtils.processIntColumns(df)
+      df = WahooUtils.processStringColumnsAsInt(df)
+      val numericFields = WahooUtils.getNumericFields(df, Array("QuoteConversion_Flag"))
+      val assembler = WahooUtils.createAssembler(numericFields.map(_.name).toArray)
+      val processStages: Array[PipelineStage] = Array(indexer, assembler)
+      WahooUtils.processDataFrame(df, processStages)
+    }}.toArray
+
+    val evaluator = WahooUtils.createEvaluator("QuoteConversion_Flag", "prediction")
+    val rf: RandomForestClassifier = new WahooRandomForestClassifier()
+      .setLabelCol("label")
+      .setFeaturesCol("features")
+      .setNumTrees(100)
+
+    WahooRandomForestIncremental.runAllBenchmarks(rf, evaluator, batches,
+      numBatches, 10, 1, sc, sqlContext, true, false)
+  }
+}
 object WahooBikeShare {
   def main(args: Array[String]) {
     val conf = new SparkConf()
