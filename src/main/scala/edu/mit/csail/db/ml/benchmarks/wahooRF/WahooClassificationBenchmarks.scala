@@ -92,10 +92,10 @@ object WahooHomesite {
       .set("spark.driver.allowMultipleContexts", "true")
     val sc = new SparkContext(conf)
     val sqlContext = new SQLContext(sc)
-    val numBatches = 20
+    val numBatches = 14
     val indexer = WahooUtils.createStringIndexer("QuoteConversion_Flag", "label")
 
-    val batches: Array[DataFrame] = Range(0,numBatches).map { index => {
+    val batches: Array[DataFrame] = Range(0,numBatches+1).map { index => {
       val trainingDataPath = "kaggleData/homesite/" + index.toString + "_homesite.csv"
       var df: DataFrame = WahooUtils.readData(trainingDataPath, sqlContext)
 
@@ -114,7 +114,7 @@ object WahooHomesite {
       .setNumTrees(100)
 
     WahooRandomForestIncremental.runAllBenchmarks(rf, evaluator, batches,
-      numBatches, 10, 1, sc, sqlContext, true, false)
+      numBatches, 5, 1, sc, sqlContext, true, false)
   }
 }
 object WahooBikeShare {
