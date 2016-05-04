@@ -1,9 +1,8 @@
-# ml-project
-Tools to accelerate the process of building machine learning models
+## MEng project
 
-[How to View Event Logs]
-Step 0. Set $SPARK environment variable to point to Spark distribution on machine
-Step 1. Create directory 'log' at root
-Step 2. Run LogisticRegressionSuite.scala
-Step 3. Run $SPARK/sbin/start-history-server.sh log
-Step 4. Open browser window at url localhost:18080
+This repo contains a Spark implementation of incremental random forests.
+
+Run:
+```
+# sbt assembly
+# PATH_TO_SPARK/bin/spark-submit --master local[2] --class "org.apache.spark.ml.wahoo.BENCHMARK" --driver-memory 2g target/scala-2.10/ml.jar > output.txt
